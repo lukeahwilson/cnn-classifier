@@ -4,11 +4,11 @@
 # REVISED DATE: 2021-09-27
 # PURPOSE:
 #   - Provide utility functions for import into main
-#       o u1_show_data for displaying the loaded and processed data
-#       o u_show_data for displaying the loaded and processed data
-#       o u1_show_data for displaying the loaded and processed data
-#       o u1_show_data for displaying the loaded and processed data
-#       o u1_show_data for displaying the loaded and processed data
+#       o o1_load_data for loading data for training and classification
+#       o o2_map_labels for mapping labels on data against data indexes
+#       o o3_process_data for processing data into suitable conditions to be inputed into model
+#       o o4_attempt_overfitting for attempting to overfit a subset of the available data as an initial fitness test for the concept model
+#       o o5_train_model for training the model on the available training data
 ##
 
 # Import required libraries
@@ -30,7 +30,7 @@ def o2_map_labels():
 
 def o3_process_data():
 
-def o4_attempt_overfitting_model():
+def o4_attempt_overfitting():
 
 def o5_train_model():
 

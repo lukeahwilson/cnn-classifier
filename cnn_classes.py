@@ -4,11 +4,8 @@
 # REVISED DATE: 2021-09-27
 # PURPOSE:
 #   - Provide utility functions for import into main
-#       o u1_show_data for displaying the loaded and processed data
-#       o u_show_data for displaying the loaded and processed data
-#       o u1_show_data for displaying the loaded and processed data
-#       o u1_show_data for displaying the loaded and processed data
-#       o u1_show_data for displaying the loaded and processed data
+#       o c1_download_pretrained_model for downloading desireable pretrained models to use
+#       o c2_create_classifier() for reassigning output layers to newly attached layers and creating initialized classifier
 ##
 
 # Import required libraries

@@ -5,10 +5,10 @@
 # PURPOSE:
 #   - Provide utility functions for import into main
 #       o u1_show_data for displaying the loaded and processed data
-#       o u_show_data for displaying the loaded and processed data
-#       o u1_show_data for displaying the loaded and processed data
-#       o u1_show_data for displaying the loaded and processed data
-#       o u1_show_data for displaying the loaded and processed data
+#       o u2_load_model_checkpoint for loading previously saved model training state and hyperparameters
+#       o u3_plot_training_history for plotting the training history and performance
+#       o u4_test_model for testing the model on training data to benchmark performance
+#       o u6_show_prediction for displaying the predicted image with the prediction
 ##
 
 # Import required libraries
