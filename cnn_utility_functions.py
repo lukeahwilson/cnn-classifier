@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-09-27
+# REVISED DATE: 2021-09-28
 # PURPOSE:
 #   - Provide utility functions for import into main
 #       o u1_show_data for displaying the loaded and processed data
@@ -27,16 +27,29 @@ import matplotlib.pyplot as plt
 def u1_show_data():
 
 
-def u2_load_model_checkpoint():
+def u2_map_labels():
+    import json
+
+    with open('flower_to_name.json', 'r') as f:
+        flower_name_dic = json.load(f)
+
+    #Create file pathway for hyperparameter saving to JSON format later
+    file_hyperparameters = 'flower-classifier-googlenet-hyperparameters.json'
+
+    # this single line of code would have saved me an incredibly large amount of problem solving haha, oh well!
+    # reversed_dictionary = {value : key for (key, value) in a_dictionary.items()}
 
 
-def u3_plot_training_history():
+def u3_load_model_checkpoint():
 
 
-def u4_test_model():
+def u4_plot_training_history():
 
 
-def u5_save_model_checkpoint():
+def u5_test_model():
 
 
-def u6_show_prediction():
+def u6_save_model_checkpoint():
+
+
+def u7_show_prediction():

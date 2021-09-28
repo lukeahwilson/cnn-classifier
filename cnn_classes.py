@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-09-27
+# REVISED DATE: 2021-09-28
 # PURPOSE:
 #   - Provide utility functions for import into main
 #       o c1_download_pretrained_model for downloading desireable pretrained models to use
@@ -20,9 +20,8 @@ import matplotlib.pyplot as plt
 %matplotlib inline
 
 
-
-
 def c1_download_pretrained_model():
+
 
 
 def c2_create_classifier():

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-09-27
+# REVISED DATE: 2021-09-28
 # PURPOSE:
 #   - The project is broken down into multiple steps:
 #   - Load an image dataset
@@ -33,34 +33,36 @@ from cnn-operational-functions  import *
 
 
 def main():
+    start_time = time()
+    arg = get_input_arguments()
 
-    o1_load_data():
+    o1_load_data(data_dir):
 
-    o2_map_labels():
+    u1_map_labels():
 
-    o3_process_data():
+    o2_process_data():
 
-    u1_show_data():
+    u2_show_data():
 
     c1_download_pretrained_model():
 
     c2_create_classifier():
 
-    u2_load_model_checkpoint():
+    u3_load_model_checkpoint():
 
-    o4_attempt_overfitting_model():
+    o3_attempt_overfitting_model():
 
-    o5_train_model():
+    o4_train_model():
 
-    u3_plot_training_history():
+    u4_plot_training_history():
 
-    u4_test_model():
+    u5_test_model():
 
-    u5_save_model_checkpoint():
+    u6_save_model_checkpoint():
 
-    o6_predict_data():
+    o5_predict_data():
 
-    u6_show_prediction():
+    u7_show_prediction():
 
 if __name__ == "__main__":
     main()
