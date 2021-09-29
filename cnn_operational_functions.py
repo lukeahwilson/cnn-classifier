@@ -42,11 +42,22 @@ def o1_get_input_args():
     parser.add_argument('--dir', type=str, default='~/Programming Data/Flower_data/', help='input path for data directory')
     parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model', choices=['googlenet', 'alexnet', 'resnet'])
     parser.add_argument('--names', type=str, default='', help='flower_to_name.json')
-
     return parser.parse_args() #return parsed arguments
 
 
 def o1_load_processed_data(data_dir):
+    """
+    Creates and stores command line arguments inputted by the user. Attaches default arguments and help text to aid user.
+    Command Line Arguments:
+        1. Directory as --dir
+        2. CNN Model as --model
+        3. Data Name Dictionary as --names
+    This function returns these arguments as an ArgumentParser object.
+    Parameters:
+        - None
+    Returns:
+        - Stored command line arguments as an Argument Parser Object with parse_args() data structure
+    """
 
     #Define data pathway
     train_dir = data_dir + 'train'
@@ -113,17 +124,20 @@ def o2_process_data(transform_request):
 
     overfit_transform = train_transform
 
-    return = globals()[transform_request + '_transform')
+    return = locals()[transform_request + '_transform')
 
 
 def o3_attempt_overfitting():
 
+
 def o4_train_model():
 
-print(torch.cuda.device_count())
-print(torch.cuda.current_device())
-print(torch.cuda.get_device_name(torch.cuda.current_device()))
-print(torch.cuda.is_available())
+    print(torch.cuda.device_count())
+    print(torch.cuda.current_device())
+    print(torch.cuda.get_device_name(torch.cuda.current_device()))
+    print(torch.cuda.is_available())
+
+
 
 def o5_predict_data():
 
