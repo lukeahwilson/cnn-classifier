@@ -33,10 +33,30 @@ from cnn-operational-functions  import *
 
 
 def main():
+    """
+    1. load data
+    2. process data
+    3. map data
+    4. display data examples
+    5. download pretrained model
+    6. create a classifier
+    7. load model if desired
+    8. option for overfitting
+    9. train the model
+    10. plot training history
+    11. test the model
+    12. save the model prompt
+    13. predict data
+    14. show predictions
+    """
+
+
     start_time = time()
     arg = get_input_arguments()
 
-    o1_load_data(data_dir):
+    dict_datasets = o1_load_data(arg.dir)
+
+
 
     u1_map_labels():
 
@@ -44,9 +64,12 @@ def main():
 
     u2_show_data():
 
+
+
     c1_download_pretrained_model():
 
-    c2_create_classifier():
+    c2_create_classifier(arg.train, arg.model, len(dict_datasets[train_data.classes])):
+
 
     u3_load_model_checkpoint():
 

@@ -40,16 +40,11 @@ def u2_map_labels():
     # reversed_dictionary = {value : key for (key, value) in a_dictionary.items()}
 
 
-def u3_load_model_checkpoint():
+def u3_plot_training_history():
 
 
-def u4_plot_training_history():
+def u4_test_model():
 
 
-def u5_test_model():
 
-
-def u6_save_model_checkpoint():
-
-
-def u7_show_prediction():
+def u5_show_prediction():
