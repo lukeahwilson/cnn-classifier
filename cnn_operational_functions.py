@@ -39,7 +39,7 @@ def o1_get_input_args():
     """
 
     parser = argparse.ArgumentParser(description = 'Classify input images and benchmark performance')
-    parser.add_argument('--dir', type=str, default='/Programming Data/Flower_data/', help='input path for data directory')
+    parser.add_argument('--dir', type=str, default= os.path.expanduser('~')+'/Programming Data/Flower_data/', help='input path for data directory')
     parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model', choices=['googlenet', 'alexnet', 'resnet'])
     parser.add_argument('--train', type=str, default='n', help='yes 'y' or no 'n' to retrain this model', choices=['y','n'])
     parser.add_argument('--names', type=str, default='', help='flower_to_name.json')
@@ -60,13 +60,8 @@ def o1_load_processed_data(data_dir):
         - Stored command line arguments as an Argument Parser Object with parse_args() data structure
     """
 
-    #Define data pathway
-    data_dir = os.path.expanduser('~')+'/Programming Data/Flower_data/'
-
     dict_datasets = {}
 
-    #Define image size
-    image_1d_size = 224
 
     for folder in os.listdir(data_dir):
         if os.path.splitext(folder)[1] == '' and folder != 'predict':
@@ -74,8 +69,15 @@ def o1_load_processed_data(data_dir):
             dict_datasets[folder + '_data'] = datasets.ImageFolder(data_dir + folder, transform=o2_process_data(folder))
         if os.path.splitext(folder)[1] == '.json':
             with open(data_dir + folder, 'r') as f:
-                flower_name_dic = json.load(f)
+                data_name_dic = json.load(f)
     return dict_datasets
+
+
+    #Create file pathway for hyperparameter saving to JSON format later
+    file_hyperparameters = 'flower-classifier-googlenet-hyperparameters.json'
+
+    # this single line of code would have saved me an incredibly large amount of problem solving haha, oh well!
+    # reversed_dictionary = {value : key for (key, value) in a_dictionary.items()}
 
 
 def o1_data_to_iterator(dict_datasets):
@@ -91,6 +93,8 @@ def o1_data_to_iterator(dict_datasets):
 
 def o2_process_data(transform_request):
     #Define transforms for training, validation, overfitting, and test sets to convert to desirable tensors for processing
+
+    #Define image size
     image_1d_size = 224
 
     predict_transform = transforms.Compose([transforms.Resize(int(np.round_(256, decimals=0))),

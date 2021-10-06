@@ -25,11 +25,10 @@ from torchvision import transforms, datasets, models
 from torch import nn, optim
 from PIL import Image
 import matplotlib.pyplot as plt
-%matplotlib inline
 
-from cnn-classes import *
-from cnn-utility-functions import *
-from cnn-operational-functions  import *
+from cnn_classes import *
+from cnn_utility_functions import *
+from cnn_operational_functions  import *
 
 
 def main():
@@ -50,11 +49,11 @@ def main():
     14. show predictions
     """
 
-
     start_time = time()
-    arg = get_input_arguments()
 
-    dict_datasets = o1_load_data(arg.dir)
+    arg = o1_get_input_args()
+
+    dict_datasets = o2_load_processed_data(arg.dir)
 
 
 
