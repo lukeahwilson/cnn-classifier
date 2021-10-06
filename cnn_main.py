@@ -48,23 +48,23 @@ def main():
     14. show predictions
     """
 
-    start_time = time()
+    start_time = time.time()
 
     arg = o1_get_input_args()
 
     dict_datasets, data_labels_dic = o2_load_processed_data(arg.dir)
 
     #Create file pathway for hyperparameter saving to JSON format later
-    file_name_scheme = os.path.basename(data_dir) + '_' + arg.model
+    file_name_scheme = os.path.basename(os.path.dirname(arg.dir)) + '_' + arg.model
 
     # Download a classifer model for use
-    model = m2_create_classifier(arg.model, len(dict_datasets[train_data.classes]))
+    model = m2_create_classifier(arg.model, len(dict_datasets['train_data'].classes))
 
     #Define the criterion
     criterion = nn.NLLLoss()
 
     # Only train the classifier (fc) parameters, feature parameters are frozen
-    optimizer = optim.Adam(model.new_ouput.parameters(), lr=learnrate, weight_decay=weightdecay)
+    optimizer = optim.Adam(model.new_output.parameters(), lr=learnrate, weight_decay=weightdecay)
 
     if arg.train:
         print('Displaying an example processed image from the training and validation sets')

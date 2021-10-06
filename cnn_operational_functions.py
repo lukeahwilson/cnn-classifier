@@ -20,6 +20,7 @@ from torchvision import transforms, datasets, models
 from torch import nn, optim
 from PIL import Image
 import matplotlib.pyplot as plt
+import argparse #import python argparse function
 import json
 
 
@@ -38,7 +39,7 @@ def o1_get_input_args():
     """
 
     parser = argparse.ArgumentParser(description = 'Classify input images and benchmark performance')
-    parser.add_argument('--dir', type=str, default= os.path.expanduser('~')+'/Programming Data/Flower_data', help='input path for data directory')
+    parser.add_argument('--dir', type=str, default= os.path.expanduser('~')+'/Programming Data/Flower_data/', help='input path for data directory')
     parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model', choices=['googlenet', 'alexnet', 'resnet'])
     parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
     parser.add_argument('--epoch', type=str, default=10, help='provide a whole number for the number of epochs for training')
@@ -64,7 +65,7 @@ def o2_load_processed_data(data_dir):
     for folder in os.listdir(data_dir):
         if os.path.splitext(folder)[1] == '' and folder != 'predict':
     #         dict_datadir[folder] =
-            dict_datasets[folder + '_data'] = datasets.ImageFolder(data_dir + folder, transform=o2_process_data(folder))
+            dict_datasets[folder + '_data'] = datasets.ImageFolder(data_dir + folder, transform=o3_process_data(folder))
         if os.path.splitext(folder)[1] == '.json':
             with open(data_dir + folder, 'r') as f:
                 data_labels_dic = json.load(f)

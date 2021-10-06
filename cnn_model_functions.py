@@ -19,15 +19,9 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 
-vgg16 = models.vgg16()
-alexnet = models.alexnet()
-googlenet = models.googlenet()
-densenet = models.densenet161()
-inception = models.inception_v3()
-resnext50 = models.resnext50_32x4d()
-shufflenet = models.shufflenet_v2_x1_0()
-models = {'vgg': vgg16, 'alexnet': alexnet, 'googlenet': googlenet, 'densenet': densenet,
-          'inception': inception, 'resnext50': resnext50, 'shufflenet': shufflenet}
+# Store a dictionary of available models as names to avoid downloading models until a choice has been made
+model_name_dic = {'vgg': 'vgg16', 'alexnet': 'alexnet', 'googlenet': 'googlenet', 'densenet': 'densenet161',
+          'inception': 'inception_v3', 'resnext50': 'resnext50_32x4d', 'shufflenet': 'shufflenet_v2_x1_0'}
 
 
 #Create a Classifier class, inheriting from nn.Module and incorporating Relu, Dropout and log_softmax
@@ -48,8 +42,8 @@ class Classifier(nn.Module):
 
 
 def m1_download_pretrained_model(model_name):
-    #Download a pretrained convolutional neural network to reference
-    pretrained_model = models[model_name]
+    #Download a pretrained convolutional neural network to reference, choose only the model requested by the user
+    model = getattr(models, model_name_dic[model_name])(pretrained=True)
 
     #Freeze parameters so we don't backprop through them
     for param in model.parameters():
@@ -59,12 +53,12 @@ def m1_download_pretrained_model(model_name):
     pretrained_output_name = list(model._modules.items())[-1][0]
     model._modules['new_output'] = model._modules.pop(pretrained_output_name)
 
-    return pretrained_model
+    return model
 
 
 def m2_create_classifier(model_name, classes_length):
 
-    model = c1_download_pretrained_model(model_name)
+    model = m1_download_pretrained_model(model_name)
 
     # Ensure that the in and out features for our model seamlessly match the in from the pretrained CNN and the out for the classes
     in_features = model.new_output.weight.shape[1]
