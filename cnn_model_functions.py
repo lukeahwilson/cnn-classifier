@@ -17,7 +17,6 @@ from torchvision import transforms, datasets, models
 from torch import nn, optim
 from PIL import Image
 import matplotlib.pyplot as plt
-%matplotlib inline
 
 
 vgg16 = models.vgg16()
@@ -27,6 +26,8 @@ densenet = models.densenet161()
 inception = models.inception_v3()
 resnext50 = models.resnext50_32x4d()
 shufflenet = models.shufflenet_v2_x1_0()
+models = {'vgg': vgg16, 'alexnet': alexnet, 'googlenet': googlenet, 'densenet': densenet,
+          'inception': inception, 'resnext50': resnext50, 'shufflenet': shufflenet}
 
 
 #Create a Classifier class, inheriting from nn.Module and incorporating Relu, Dropout and log_softmax
@@ -48,72 +49,41 @@ class Classifier(nn.Module):
 
 def m1_download_pretrained_model(model_name):
     #Download a pretrained convolutional neural network to reference
-    models = {'vgg': vgg16, 'alexnet': alexnet, 'googlenet': googlenet, 'densenet': densenet,
-              'inception': inception, 'resnext50': resnext50, 'shufflenet': shufflenet}
-    model = models[model_name]
+    pretrained_model = models[model_name]
 
     #Freeze parameters so we don't backprop through them
     for param in model.parameters():
         param.requires_grad = False
 
+    # Rename the pretrained output layer to a default name 'new_output'
     pretrained_output_name = list(model._modules.items())[-1][0]
     model._modules['new_output'] = model._modules.pop(pretrained_output_name)
-    return model
+
+    return pretrained_model
 
 
-def m2_create_classifier(train, model_name, classes_length):
-    model = c1_download_pretrained_model(model_name):
+def m2_create_classifier(model_name, classes_length):
 
+    model = c1_download_pretrained_model(model_name)
+
+    # Ensure that the in and out features for our model seamlessly match the in from the pretrained CNN and the out for the classes
     in_features = model.new_output.weight.shape[1]
     out_features = classes_length
 
     #Replace the fully connected layer(s) at the end of the model with our own fully connected classifier
     model.new_output = Classifier(in_features, out_features)
 
-    #Define the criterion
-    criterion = nn.NLLLoss()
-
-    #Define learning rate and weight decay
-    learnrate=0.003
-    weightdecay=0.00001
-    startlearn=learnrate
-
-    # Only train the classifier (fc) parameters, feature parameters are frozen
-    optimizer = optim.Adam(model.fc.parameters(), lr=learnrate, weight_decay=weightdecay)
-
-    if train:
-        model = c1_download_pretrained_model(model_name)
-    if not train:
-        m4_save_model_checkpoint(model, learnrate, training_loss_history, validate_loss_history, epoch_on, running_count)
-        model = c
-    model =
+    return model
 
 
-#    Create dictionary of all these variables for training
-    #Initialize testing loss history
-    training_loss_history, validate_loss_history, testing_loss_history, overfit_loss_history = [], [], [], []
-
-    #Initialize tracker for activating CNN layers
-    running_count = 0
-
-
-def m3_load_model_checkpoint():
+def m3_load_model_checkpoint(model, file_name_scheme):
     # Option to reload from previous state
-    checkpoint = torch.load('flower-classifier-googlenet-dict.pth')
+    checkpoint = torch.load(file_name_scheme + '_dict.pth')
     model.load_state_dict(checkpoint)
 
-    with open(file_hyperparameters, 'r') as file:
+    with open(file_name_scheme + '_hyperparameters', 'r') as file:
         model_hyperparameters = json.load(file)
 
-    learnrate = model_hyperparameters['learnrate']
-    training_loss_history = model_hyperparameters['training_loss_history']
-    validate_loss_history = model_hyperparameters['validate_loss_history']
-    epoch_on = model_hyperparameters['epoch_on']
-    running_count = model_hyperparameters['running_count']
-
-
-
-"""
     print('loaded model learnrate = ', learnrate)
     plt.plot(training_loss_history, label='Training Training Loss')
     plt.plot(validate_loss_history, label='Validate Training Loss')
@@ -136,21 +106,15 @@ def m3_load_model_checkpoint():
     plt.ylabel('Total Loss')
     plt.xlabel('Total Epoch ({})'.format(len(training_loss_history)))
     plt.legend(frameon=False)
-"""
+
+    return model, model_hyperparamaters
 
 
-def m4_save_model_checkpoint(model, learnrate, training_loss_history, validate_loss_history, epoch_on, running_count):
+def m4_save_model_checkpoint(model, file_name_scheme, model_hyperparameters):
     #Save the model state_dict
-    torch.save(model.state_dict(), 'flower-classifier-googlenet-dict.pth')
-    model.fc.state_dict().keys()
-    file_hyperparameters = 'flower-classifier-googlenet-hyperparameters.json'
-    #Save the model hyperparameters and the locations in which the CNN training activated and deactivated
-    model_hyperparameters = {'learnrate':learnrate,
-                             'training_loss_history': training_loss_history,
-                             'validate_loss_history': validate_loss_history,
-                             'epoch_on': epoch_on,
-                             'running_count': running_count}
+    torch.save(model.state_dict(), file_name_scheme + '_dict.pth')
+    model.new_output.state_dict().keys()
 
     #Create a JSON file containing the saved information above
-    with open(file_hyperparameters, 'w') as file:
+    with open(file_name_scheme + '_hyperparameters.json', 'w') as file:
         json.dump(model_hyperparameters, file)

@@ -89,6 +89,3 @@ def u4_test_model():
         prediction = torch.exp(model(input_image))
         probabilities, classes = prediction.topk(topk)
     return probabilities, classes
-
-
-def u5_show_prediction():

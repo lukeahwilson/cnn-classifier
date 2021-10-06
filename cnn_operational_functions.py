@@ -21,7 +21,6 @@ from torch import nn, optim
 from PIL import Image
 import matplotlib.pyplot as plt
 import json
-%matplotlib inline
 
 
 def o1_get_input_args():
@@ -39,14 +38,15 @@ def o1_get_input_args():
     """
 
     parser = argparse.ArgumentParser(description = 'Classify input images and benchmark performance')
-    parser.add_argument('--dir', type=str, default= os.path.expanduser('~')+'/Programming Data/Flower_data/', help='input path for data directory')
+    parser.add_argument('--dir', type=str, default= os.path.expanduser('~')+'/Programming Data/Flower_data', help='input path for data directory')
     parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model', choices=['googlenet', 'alexnet', 'resnet'])
-    parser.add_argument('--train', type=str, default='n', help='yes 'y' or no 'n' to retrain this model', choices=['y','n'])
+    parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
+    parser.add_argument('--epoch', type=str, default=10, help='provide a whole number for the number of epochs for training')
     parser.add_argument('--names', type=str, default='', help='flower_to_name.json')
     return parser.parse_args() #return parsed arguments
 
 
-def o1_load_processed_data(data_dir):
+def o2_load_processed_data(data_dir):
     """
     Receives a pathway to a folder containing training, .
     Command Line Arguments:
@@ -61,37 +61,30 @@ def o1_load_processed_data(data_dir):
     """
 
     dict_datasets = {}
-
-
     for folder in os.listdir(data_dir):
         if os.path.splitext(folder)[1] == '' and folder != 'predict':
     #         dict_datadir[folder] =
             dict_datasets[folder + '_data'] = datasets.ImageFolder(data_dir + folder, transform=o2_process_data(folder))
         if os.path.splitext(folder)[1] == '.json':
             with open(data_dir + folder, 'r') as f:
-                data_name_dic = json.load(f)
-    return dict_datasets
+                data_labels_dic = json.load(f)
+                data_labels_dic = {value : key for (key, value) in data_labels_dic.items()}
+    return dict_datasets, data_labels_dic
+
+def o3_data_to_iterator(dict_datasets):
+    '''
+    # bug, requires every folder to run correctly. Consider removing this function and nesting it directly into training function!
+    '''
+    dict_data_loaders = {}
+    dict_data_loaders['train_loader'] = torch.utils.data.DataLoader(dict_datasets['train_data'], batch_size=256, shuffle=True)
+    dict_data_loaders['valid_loader'] = torch.utils.data.DataLoader(dict_datasets['valid_data'], batch_size=64, shuffle=True)
+    dict_data_loaders['test_loader'] = torch.utils.data.DataLoader(dict_datasets['test_data'], batch_size=32, shuffle=True)
+    dict_data_loaders['overfit_loader'] = torch.utils.data.DataLoader(dict_datasets['overfit_data'], batch_size=8, shuffle=True)
+
+    return dict_data_loaders
 
 
-    #Create file pathway for hyperparameter saving to JSON format later
-    file_hyperparameters = 'flower-classifier-googlenet-hyperparameters.json'
-
-    # this single line of code would have saved me an incredibly large amount of problem solving haha, oh well!
-    # reversed_dictionary = {value : key for (key, value) in a_dictionary.items()}
-
-
-def o1_data_to_iterator(dict_datasets):
-    train_loader = torch.utils.data.DataLoader(dict_datasets['train_data'], batch_size=256, shuffle=True)
-    valid_loader = torch.utils.data.DataLoader(dict_datasets['valid_data'], batch_size=64, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(dict_datasets['test_data'], batch_size=32, shuffle=True)
-    overfit_loader = torch.utils.data.DataLoader(dict_datasets['overfit_data'], batch_size=8, shuffle=True)
-
-    #Create file pathway for hyperparameter saving to JSON format later
-    file_hyperparameters = 'flower-classifier-googlenet-hyperparameters.json'
-    return loader
-
-
-def o2_process_data(transform_request):
+def o3_process_data(transform_request):
     #Define transforms for training, validation, overfitting, and test sets to convert to desirable tensors for processing
 
     #Define image size
@@ -128,10 +121,10 @@ def o2_process_data(transform_request):
 
     overfit_transform = train_transform
 
-    return locals()[transform_request + '_transform')
+    return locals()[transform_request + '_transform']
 
 
-def o3_train_model():
+def o4_train_model():
     # Check model can overfit the data when using a miniscule sample size, looking for high accuracy on a few images
     print("Using GPU" if torch.cuda.is_available() else "WARNING")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -221,18 +214,93 @@ def o3_train_model():
         if e+1 == epochs:
             print('\nModel failed to overfit images')
 
+        #    Create dictionary of all these variables for training
+            #Initialize testing loss history
+            loss_history_dic = {}
+            loss_history_dic['training_loss_history'] = []
+            loss_history_dic['validate_loss_history'] = []
+            loss_history_dic['testing_loss_history'] = []
+            loss_history_dic['overfit_loss_history'] = []
 
-def o4_train_model():
+            #Initialize tracker for activating CNN layers
+            running_count = 0
+
+
+def o5_validate_test():
     # Check model can overfit the data when using a miniscule sample size, looking for high accuracy on a few images
     print("Using GPU" if torch.cuda.is_available() else "WARNING")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.cuda.empty_cache()
     model.to(device)
 
+def o6_test_model():
+
+# for e in range(epochs):
+    epoch_test_loss = 0 # initialize total testing loss for this epoch
+    test_count_correct = 0 # initialize total correct predictions on test set
+    model.eval() # set model to evaluate mode to deactivate generalizing operations such as dropout and leverage full model
+    with torch.no_grad(): # turn off gradient tracking and calculation for computational efficiency
+        for test_images, test_labels in test_loader: # cycle through testing data to observe performance
+            test_images, test_labels = test_images.to(device), test_labels.to(device) # move data to GPU
+            log_out = model(test_images) # obtain the logarithmic probability from the model
+            loss = criterion(log_out, test_labels) # calculate loss (error) for this image batch based on criterion
+            epoch_test_loss += loss.item() # add testing loss to total test loss this epoch, convert to value with .item()
+
+            out = torch.exp(log_out) # obtain probability from the logarithmic probability calculated by the model
+            highest_prob, chosen_class = out.topk(1, dim=1) # obtain the chosen classes based on greatest calculated probability
+            equals = chosen_class.view(test_labels.shape) == test_labels # determine how many correct matches were made in this batch
+            test_count_correct += equals.sum()  # add the count of correct matches this batch to the total running this epoch
+
+        ave_testing_loss = epoch_test_loss / len(test_loader) # determine average loss per batch of testing images
+
+    print('Epoch: {}/{}.. '.format(e+1, epochs),
+        'testing Loss: {:.3f}.. '.format(ave_testing_loss),
+        'testing Accuracy: {:.3f}'.format(test_count_correct / len(test_loader.dataset)),
+        'Runtime - {:.0f} seconds'.format((time.time() - t0)))
+
+# def get_image(image_path):
+    ''' Process raw image for input to deep learning model
+    '''
+    image_open = Image.open(image_path) # access image at pathway, open the image and store it as a PIL image
+    tensor_image = flower_transform(image_open) # transform PIL image and simultaneously convert image to a tensor (no need for .clone().detach())
+    input_image = torch.unsqueeze(tensor_image, 0) # change image shape from a stand alone image tensor, to a list of image tensors with length = 1
+    return input_image # return processed image
+
+# def prediction(image_path, model, topk=5):
+    ''' Compute probabilities for various classes for an image using a trained deep learning model.
+    '''
+    model.eval()
+    with torch.no_grad():
+        input_image = get_image(image_path)
+        prediction = torch.exp(model(input_image))
+        probabilities, classes = prediction.topk(topk)
+    return probabilities, classes
 
 
-def o5_predict_data():
+def u6_plot_training_history(loss_history_dic):
+
+    plt.plot(training_loss_history, label='Training Training Loss')
+    plt.plot(validate_loss_history, label='Validate Training Loss')
+    plt.vlines(
+        colors = 'black',
+        x = epoch_on,
+        ymin = min(training_loss_history),
+        ymax = max(training_loss_history[5:]),
+        linestyles = 'dotted',
+        label = 'CNN Layers Activated'
+    ).set_clip_on(False)
+    plt.vlines(
+        colors = 'black',
+        x = epoch_on + running_count,
+        ymin = min(training_loss_history),
+        ymax = max(training_loss_history[5:]),
+        linestyles = 'dotted',
+        label = 'CNN Layers Deactivated'
+    ).set_clip_on(False)
+    plt.ylabel('Total Loss')
+    plt.xlabel('Total Epoch ({})'.format(len(training_loss_history)))
+    plt.legend(frameon=False)
 
 
-if __name__ == "__main__":
-    main()
+def o7_predict_data():
+    print(1)
