@@ -48,10 +48,13 @@ def main():
     14. show predictions
     """
 
-    start_time = time.time()
+    # Record start time
+    start_program_time = time.time()
 
+    # Get arguments
     arg = o1_get_input_args()
 
+    # Get processed data
     dict_datasets, data_labels_dic = o2_load_processed_data(arg.dir)
 
     #Create file pathway for hyperparameter saving to JSON format later
@@ -60,33 +63,30 @@ def main():
     # Download a classifer model for use
     model = m2_create_classifier(arg.model, len(dict_datasets['train_data'].classes))
 
-    #Define the criterion
-    criterion = nn.NLLLoss()
-
-    # Only train the classifier (fc) parameters, feature parameters are frozen
-    optimizer = optim.Adam(model.new_output.parameters(), lr=learnrate, weight_decay=weightdecay)
-
     if arg.train:
         print('Displaying an example processed image from the training and validation sets')
         plt.imshow(dict_datasets['train_data'][0][0].numpy().transpose((1, 2, 0)))
         plt.imshow(dict_datasets['valid_data'][0][0].numpy().transpose((1, 2, 0)))
 
+        """If training, prompt, do you want to attempt overfit, 5 seconds to answer"""
+        model, model_hyperparamaters = o5_train_model(model, dict_datasets, epoch, 'overfit_loader')
 
-        # Define default hyperparameters: learning rate and weight decay
-        learnrate=0.003
-        weightdecay=0.00001
-        startlearn=learnrate
+        """If training, prompt, do you want to continue with training, 10 seconds to answer"""
+        model, model_hyperparamaters = o5_train_model(model, dict_datasets, epoch, 'train_loader')
 
+        """If training, prompt, do you want to attempt save results"""
         #Save the model hyperparameters and the locations in which the CNN training activated and deactivated
-        model_hyperparameters = {'learnrate':learnrate,
-                                 'training_loss_history': training_loss_history,
-                                 'validate_loss_history': validate_loss_history,
-                                 'epoch_on': epoch_on,
-                                 'running_count': running_count}
 
         # PROMPT USER INPUT TO SAVE MODEL AFTER PERFORMANCE INDICATED
         m4_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
 
+
+    """If training, prompt, do you want to attempt testing, 5 seconds to answer"""
+        t1 = time.time()
+        test_count_correct, ave_test_loss = o7_model_no_backprop(model, 'test_loader')
+        print('testing Loss: {:.3f}.. '.format(ave_testing_loss),
+            'testing Accuracy: {:.3f}'.format(test_count_correct / len(test_loader.dataset)),
+            'Runtime - {:.0f} seconds'.format((time.time() - t1)))
 
     if not arg.train:
         model, model_hyperparamaters = m3_load_model_checkpoint(model, file_hyperparameters)
@@ -98,6 +98,7 @@ def main():
         running_count = model_hyperparameters['running_count']
 
         print('The model is ready to provide predictions')
+
 
 
 

@@ -43,7 +43,7 @@ def o1_get_input_args():
     parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model', choices=['googlenet', 'alexnet', 'resnet'])
     parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
     parser.add_argument('--epoch', type=str, default=10, help='provide a whole number for the number of epochs for training')
-    parser.add_argument('--names', type=str, default='', help='flower_to_name.json')
+    parser.add_argument('--label', type=str, default='', help='flower_to_name.json')
     return parser.parse_args() #return parsed arguments
 
 
@@ -71,19 +71,6 @@ def o2_load_processed_data(data_dir):
                 data_labels_dic = json.load(f)
                 data_labels_dic = {value : key for (key, value) in data_labels_dic.items()}
     return dict_datasets, data_labels_dic
-
-def o3_data_to_iterator(dict_datasets):
-    '''
-    # bug, requires every folder to run correctly. Consider removing this function and nesting it directly into training function!
-    '''
-    dict_data_loaders = {}
-    dict_data_loaders['train_loader'] = torch.utils.data.DataLoader(dict_datasets['train_data'], batch_size=256, shuffle=True)
-    dict_data_loaders['valid_loader'] = torch.utils.data.DataLoader(dict_datasets['valid_data'], batch_size=64, shuffle=True)
-    dict_data_loaders['test_loader'] = torch.utils.data.DataLoader(dict_datasets['test_data'], batch_size=32, shuffle=True)
-    dict_data_loaders['overfit_loader'] = torch.utils.data.DataLoader(dict_datasets['overfit_data'], batch_size=8, shuffle=True)
-
-    return dict_data_loaders
-
 
 def o3_process_data(transform_request):
     #Define transforms for training, validation, overfitting, and test sets to convert to desirable tensors for processing
@@ -125,160 +112,137 @@ def o3_process_data(transform_request):
     return locals()[transform_request + '_transform']
 
 
-def o4_train_model():
+def o4_data_iterator(dict_dataset):
+    '''
+    # bug, requires every folder to run correctly. Consider removing this function and nesting it directly into training function!
+    '''
+    dict_data_loaders = {}
+    dict_data_loaders['train_loader'] = torch.utils.data.DataLoader(dict_datasets['train_data'], batch_size=256, shuffle=True)
+    dict_data_loaders['valid_loader'] = torch.utils.data.DataLoader(dict_datasets['valid_data'], batch_size=64, shuffle=True)
+    dict_data_loaders['testing_loader'] = torch.utils.data.DataLoader(dict_datasets['testing_data'], batch_size=32, shuffle=True)
+    dict_data_loaders['overfit_loader'] = torch.utils.data.DataLoader(dict_datasets['overfit_data'], batch_size=8, shuffle=True)
+
+    return dict_data_loaders
+
+
+def o5_train_model(model, dict_datasets, epoch, type_loader):
     # Check model can overfit the data when using a miniscule sample size, looking for high accuracy on a few images
     print("Using GPU" if torch.cuda.is_available() else "WARNING")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.cuda.empty_cache()
     model.to(device)
 
-
     t0 = time.time() # initialize start time for running training
-
+    dict_data_loaders = o4_data_iterator(dict_datasets)
     running_count = 0 # initialize running count in order to track number of epochs fine tuning deeper network
     running = False # initialize running variable to start system with deeper network frozen
 
-    decayover = 0.9 # hyperparameter decay factor for decaying learning rate
-    epochsover = 200 # hyperparameter number of epochs
 
-    decay = 0.6 # hyperparameter decay factor for decaying learning rate
-    epochs = 60 # hyperparameter number of epochs
+    # Define default hyperparameters: learning rate and weight decay
+    model_hyperparameters = {'learnrate': 0.003,
+                         'training_loss_history': [],
+                         'validate_loss_history': [],
+                         'epoch_on': [],
+                         'running_count': 0}
+    startlearn = model_hyperparameters['learnrate']
+    weightdecay = 0.00001
 
-    for e in range(epochs):
-        epoch_train_loss = 0 # initialize total training loss for this epoch
-        model.train() # Set model to training mode to activate operations such as dropout
-        for train_images, train_labels in train_loader: # cycle through training data
-            train_images, train_labels = train_images.to(device), train_labels.to(device) # move data to GPU
+    if type_loader == 'overfit_loader':
+        decayover = 0.9 # hyperparameter decay factor for decaying learning rate
+        epoch = 200 # hyperparameter number of epochs
 
-            optimizer.zero_grad() # clear gradient history
-            log_out = model(train_images) # run image through model to get logarithmic probability
-            loss = criterion(log_out, train_labels) # calculate loss (error) for this image batch based on criterion
+    if type_loader == 'train_loader':
+        decay = 0.6 # hyperparameter decay factor for decaying learning rate
 
-            loss.backward() # backpropogate gradients through model based on error
-            optimizer.step() # update weights in model based on calculated gradient information
-            epoch_train_loss += loss.item() # add training loss to total train loss this epoch, convert to value with .item()
+    # Only train the classifier (fc) parameters, feature parameters are frozen
+    optimizer = optim.Adam(model.new_output.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=weightdecay)
 
-        else:
-            epoch_valid_loss = 0 # initialize total validate loss for this epoch
-            valid_count_correct = 0 # initialize total correct predictions on valid set
-            model.eval() # set model to evaluate mode to deactivate generalizing operations such as dropout and leverage full model
-            with torch.no_grad(): # turn off gradient tracking and calculation for computational efficiency
-                for valid_images, valid_labels in valid_loader: # cycle through validate data to observe performance
-                    valid_images, valid_labels = valid_images.to(device), valid_labels.to(device) # move data to GPU
-                    log_out = model(valid_images) # obtain the logarithmic probability from the model
-                    loss = criterion(log_out, valid_labels) # calculate loss (error) for this image batch based on criterion
-                    epoch_valid_loss += loss.item() # add validate loss to total valid loss this epoch, convert to value with .item()
+    for e in range(epoch):
+        model, ave_training_loss = o6_model_backprop(model, type_loader)
+        epoch_count_correct, ave_validate_loss = o7_model_no_backprop(model, 'valid_loader')
 
-                    out = torch.exp(log_out) # obtain probability from the logarithmic probability calculated by the model
-                    highest_prob, chosen_class = out.topk(1, dim=1) # obtain the chosen classes based on greavalid calculated probability
-                    equals = chosen_class.view(valid_labels.shape) == valid_labels # determine how many correct matches were made in this batch
-                    valid_count_correct += equals.sum()  # add the count of correct matches this batch to the total running this epoch
+        model_hyperparameters['training_loss_history'].append(ave_training_loss) # append ave training loss to history of training losses
+        model_hyperparameters['validate_loss_history'].append(ave_validate_loss) # append ave validate loss to history of validate losses
 
-            ave_training_loss = epoch_train_loss / len(train_loader) # determine average loss per batch of training images
-            ave_validate_loss = epoch_valid_loss / len(valid_loader) # determine average loss per batch of validate images
-            training_loss_history.append(ave_training_loss) # append ave training loss to history of training losses
-            validate_loss_history.append(ave_validate_loss) # append ave validate loss to history of validate losses
+        print('Epoch: {}/{}.. '.format(e+1, epochs),
+            'Training Loss: {:.3f}.. '.format(ave_training_loss),
+            'Validate Loss: {:.3f}.. '.format(ave_validate_loss),
+            'Validate Accuracy: {:.3f}'.format(valid_count_correct / len(valid_loader.dataset)),
+            'Runtime - {:.0f} minutes'.format((time.time() - t0)/60))
 
-            print('Epoch: {}/{}.. '.format(e+1, epochs),
-                'Training Loss: {:.3f}.. '.format(ave_training_loss),
-                'Validate Loss: {:.3f}.. '.format(ave_validate_loss),
-                'Validate Accuracy: {:.3f}'.format(valid_count_correct / len(valid_loader.dataset)),
-                'Runtime - {:.0f} minutes'.format((time.time() - t0)/60))
+        if len(training_loss_history) > 3: # hold loop until training_loss_history has enough elements to satisfy search requirements
+            if -3*model_hyperparameters['learnrate']*decay*decay*training_loss_history[0] > np.mean([training_loss_history[-2]-training_loss_history[-1], training_loss_history[-3]-training_loss_history[-2]]):
+                # if the average of the last 2 training loss slopes is less than the original loss factored down by the learnrate, the decay, and a factor of 3, then decay the learnrate
+                model_hyperparameters['learnrate'] *= decay # multiply learnrate by the decay hyperparamater
+                optimizer = optim.Adam(model.fc.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=weightdecay) # revise the optimizer to use the new learnrate
+                print('\nLearnrate changed to: {:f}\n'.format(model_hyperparameters['learnrate']))
+            if model_hyperparameters['learnrate'] <= startlearn*decay**(9*(decay**3)) and running_count == 0: # super messy, I wanted a general expression that chose when to activate the deeper network and this worked
+                for param in model.inception5a.parameters(): # activate parameters in layer 5a once the learning rate has decayed (9*(decay**3)) number of times
+                    param.requires_grad = True
+                for param in model.inception5b.parameters(): # activate parameters in layer 5b once the learning rate has decayed (9*(decay**3)) number of times
+                    param.requires_grad = True
+                print('\nConvolutional Layers I5A and I5B Training Activated\n')
+                model_hyperparameters['epoch_on'] = e
+                running = True # change the running parameter to True so that the future loop can start counting epochs that have run
+            if running: # if running, add to count for the number of epochs run
+                model_hyperparameters['running_count'] +=1
+            if running and model_hyperparameters['running_count'] > epochs/5: # deactivate parameters if running, add the count has reached its limiter
+                for param in model.inception5a.parameters():
+                    param.requires_grad = False
+                for param in model.inception5b.parameters():
+                    param.requires_grad = False
+                print('\nConvolutional Layers I5A and I5B Training Deactivated\n')
+                running = False
+            if type_loader == 'overfit_loader'
+                if np.mean([training_loss_history[-1], training_loss_history[-2], training_loss_history[-3]]) < 0.0001:
+                    print('\nModel successfully overfit images')
+                    return model, model_hyperparamaters
+                if e+1 == epochs:
+                    print('\nModel failed to overfit images')
 
-            if len(training_loss_history) > 3: # hold loop until training_loss_history has enough elements to satisfy search requirements
-                if -3*learnrate*decay*decay*training_loss_history[0] > np.mean([training_loss_history[-2]-training_loss_history[-1], training_loss_history[-3]-training_loss_history[-2]]):
-                    # if the average of the last 2 training loss slopes is less than the original loss factored down by the learnrate, the decay, and a factor of 3, then decay the learnrate
-                    learnrate *= decay # multiply learnrate by the decay hyperparamater
-                    optimizer = optim.Adam(model.fc.parameters(), lr=learnrate, weight_decay=weightdecay) # revise the optimizer to use the new learnrate
-                    print('\nLearnrate changed to: {:f}\n'.format(learnrate))
-                if learnrate <= startlearn*decay**(9*(decay**3)) and running_count == 0: # super messy, I wanted a general expression that chose when to activate the deeper network and this worked
-                    for param in model.inception5a.parameters(): # activate parameters in layer 5a once the learning rate has decayed (9*(decay**3)) number of times
-                        param.requires_grad = True
-                    for param in model.inception5b.parameters(): # activate parameters in layer 5b once the learning rate has decayed (9*(decay**3)) number of times
-                        param.requires_grad = True
-                    print('\nConvolutional Layers I5A and I5B Training Activated\n')
-                    epoch_on = e
-                    running = True # change the running parameter to True so that the future loop can start counting epochs that have run
-                if running: # if running, add to count for the number of epochs run
-                    running_count +=1
-                if running and running_count > epochs/5: # deactivate parameters if running, add the count has reached its limiter
-                    for param in model.inception5a.parameters():
-                        param.requires_grad = False
-                    for param in model.inception5b.parameters():
-                        param.requires_grad = False
-                    print('\nConvolutional Layers I5A and I5B Training Deactivated\n')
-                    running = False
-            if np.mean([overfit_loss_history[-1], overfit_loss_history[-2], overfit_loss_history[-3]]) < 0.0001:
-                print('\nModel successfully overfit images')
-                break
+    return model, model_hyperparamaters
 
-        if e+1 == epochs:
-            print('\nModel failed to overfit images')
+def o6_model_backprop(model, type_loader):
+    epoch_train_loss = 0 # initialize total training loss for this epoch
+    model.train() # Set model to training mode to activate operations such as dropout
+    for images, labels in dict_data_loaders[type_loader]: # cycle through training data
+        images, labels = images.to(device), labels.to(device) # move data to GPU
 
-        #    Create dictionary of all these variables for training
-            #Initialize testing loss history
-            loss_history_dic = {}
-            loss_history_dic['training_loss_history'] = []
-            loss_history_dic['validate_loss_history'] = []
-            loss_history_dic['testing_loss_history'] = []
-            loss_history_dic['overfit_loss_history'] = []
+        optimizer.zero_grad() # clear gradient history
+        log_out = model(images) # run image through model to get logarithmic probability
+        loss = nn.NLLLoss(log_out, labels) # calculate loss (error) for this image batch based on criterion
 
-            #Initialize tracker for activating CNN layers
-            running_count = 0
+        loss.backward() # backpropogate gradients through model based on error
+        optimizer.step() # update weights in model based on calculated gradient information
+        epoch_train_loss += loss.item() # add training loss to total train loss this epoch, convert to value with .item()
+    ave_training_loss = epoch_train_loss / len(train_loader) # determine average loss per batch of training images
 
+    return model, ave_training_loss
 
-def o5_validate_test():
-    # Check model can overfit the data when using a miniscule sample size, looking for high accuracy on a few images
-    print("Using GPU" if torch.cuda.is_available() else "WARNING")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.cuda.empty_cache()
-    model.to(device)
-
-def o6_test_model():
-
-# for e in range(epochs):
-    epoch_test_loss = 0 # initialize total testing loss for this epoch
-    test_count_correct = 0 # initialize total correct predictions on test set
+def o7_model_no_backprop(model, type_loader):
+    epoch_valid_loss = 0 # initialize total validate loss for this epoch
+    epoch_count_correct = 0 # initialize total correct predictions on valid set
     model.eval() # set model to evaluate mode to deactivate generalizing operations such as dropout and leverage full model
     with torch.no_grad(): # turn off gradient tracking and calculation for computational efficiency
-        for test_images, test_labels in test_loader: # cycle through testing data to observe performance
-            test_images, test_labels = test_images.to(device), test_labels.to(device) # move data to GPU
-            log_out = model(test_images) # obtain the logarithmic probability from the model
-            loss = criterion(log_out, test_labels) # calculate loss (error) for this image batch based on criterion
-            epoch_test_loss += loss.item() # add testing loss to total test loss this epoch, convert to value with .item()
+        for images, labels in dict_data_loaders[type_loader]: # cycle through validate data to observe performance
+            images, labels = images.to(device), labels.to(device) # move data to GPU
+
+            log_out = model(images) # obtain the logarithmic probability from the model
+            loss = nn.NLLLoss(log_out, labels) # calculate loss (error) for this image batch based on criterion
+            epoch_valid_loss += loss.item() # add validate loss to total valid loss this epoch, convert to value with .item()
 
             out = torch.exp(log_out) # obtain probability from the logarithmic probability calculated by the model
-            highest_prob, chosen_class = out.topk(1, dim=1) # obtain the chosen classes based on greatest calculated probability
-            equals = chosen_class.view(test_labels.shape) == test_labels # determine how many correct matches were made in this batch
-            test_count_correct += equals.sum()  # add the count of correct matches this batch to the total running this epoch
+            highest_prob, chosen_class = out.topk(1, dim=1) # obtain the chosen classes based on greavalid calculated probability
+            equals = chosen_class.view(valid_labels.shape) == valid_labels # determine how many correct matches were made in this batch
+            epoch_count_correct += equals.sum()  # add the count of correct matches this batch to the total running this epoch
 
-        ave_testing_loss = epoch_test_loss / len(test_loader) # determine average loss per batch of testing images
+        ave_validate_loss = epoch_valid_loss / len(valid_loader) # determine average loss per batch of validate images
 
-    print('Epoch: {}/{}.. '.format(e+1, epochs),
-        'testing Loss: {:.3f}.. '.format(ave_testing_loss),
-        'testing Accuracy: {:.3f}'.format(test_count_correct / len(test_loader.dataset)),
-        'Runtime - {:.0f} seconds'.format((time.time() - t0)))
-
-# def get_image(image_path):
-    ''' Process raw image for input to deep learning model
-    '''
-    image_open = Image.open(image_path) # access image at pathway, open the image and store it as a PIL image
-    tensor_image = flower_transform(image_open) # transform PIL image and simultaneously convert image to a tensor (no need for .clone().detach())
-    input_image = torch.unsqueeze(tensor_image, 0) # change image shape from a stand alone image tensor, to a list of image tensors with length = 1
-    return input_image # return processed image
-
-# def prediction(image_path, model, topk=5):
-    ''' Compute probabilities for various classes for an image using a trained deep learning model.
-    '''
-    model.eval()
-    with torch.no_grad():
-        input_image = get_image(image_path)
-        prediction = torch.exp(model(input_image))
-        probabilities, classes = prediction.topk(topk)
-    return probabilities, classes
+    return epoch_count_correct, ave_validate_loss
 
 
-def u6_plot_training_history(loss_history_dic):
+
+def o7_plot_training_history(loss_history_dic):
 
     plt.plot(training_loss_history, label='Training Training Loss')
     plt.plot(validate_loss_history, label='Validate Training Loss')
@@ -302,6 +266,24 @@ def u6_plot_training_history(loss_history_dic):
     plt.xlabel('Total Epoch ({})'.format(len(training_loss_history)))
     plt.legend(frameon=False)
 
+# def get_image(image_path):
+#     ''' Process raw image for input to deep learning model
+#     '''
+#     image_open = Image.open(image_path) # access image at pathway, open the image and store it as a PIL image
+#     tensor_image = flower_transform(image_open) # transform PIL image and simultaneously convert image to a tensor (no need for .clone().detach())
+#     input_image = torch.unsqueeze(tensor_image, 0) # change image shape from a stand alone image tensor, to a list of image tensors with length = 1
+#     return input_image # return processed image
+#
+# def prediction(image_path, model, topk=5):
+#     ''' Compute probabilities for various classes for an image using a trained deep learning model.
+#     '''
+#     model.eval()
+#     with torch.no_grad():
+#         input_image = get_image(image_path)
+#         prediction = torch.exp(model(input_image))
+#         probabilities, classes = prediction.topk(topk)
+#     return probabilities, classes
 
-def o7_predict_data():
+
+def o8_predict_data():
     print(1)
