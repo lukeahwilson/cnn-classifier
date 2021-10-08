@@ -53,43 +53,44 @@ def main():
 
     # Get arguments
     arg = o1_get_input_args()
+    yes_no = ': \'y\' for yes, \'n\' for no (10 seconds to choose no): '
 
     # Get processed data
     dict_datasets, data_labels_dic = o2_load_processed_data(arg.dir)
+    dict_data_loaders = o4_data_iterator(dict_datasets)
 
     #Create file pathway for hyperparameter saving to JSON format later
     file_name_scheme = os.path.basename(os.path.dirname(arg.dir)) + '_' + arg.model
+    criterion = nn.NLLLoss()
 
     # Download a classifer model for use
     model = m2_create_classifier(arg.model, len(dict_datasets['train_data'].classes))
 
-    if arg.train:
+    if arg.train == 'y':
         print('Displaying an example processed image from the training and validation sets')
         plt.imshow(dict_datasets['train_data'][0][0].numpy().transpose((1, 2, 0)))
         plt.imshow(dict_datasets['valid_data'][0][0].numpy().transpose((1, 2, 0)))
 
-        """If training, prompt, do you want to attempt overfit, 5 seconds to answer"""
-        model, model_hyperparamaters = o5_train_model(model, dict_datasets, epoch, 'overfit_loader')
+        if o9_run_or_skip('Check model can overfit small dataset' + yes_no):
+            model, model_hyperparamaters = o5_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', criterion)
 
-        """If training, prompt, do you want to continue with training, 10 seconds to answer"""
-        model, model_hyperparamaters = o5_train_model(model, dict_datasets, epoch, 'train_loader')
+        if o9_run_or_skip('Continue with complete model training' + yes_no):
+            model, model_hyperparamaters = o5_train_model(model, dict_data_loaders, arg.epoch, 'train_loader', criterion)
 
-        """If training, prompt, do you want to attempt save results"""
+        if o9_run_or_skip('Would you like to test the model' + yes_no):
+            t1 = time.time()
+            test_count_correct, ave_test_loss = o7_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
+            print('testing Loss: {:.3f}.. '.format(ave_test_loss),
+                'testing Accuracy: {:.3f}'.format(test_count_correct / len(dict_data_loaders['testing_loader'].dataset)),
+                'Runtime - {:.0f} seconds'.format((time.time() - t1)))
+
         #Save the model hyperparameters and the locations in which the CNN training activated and deactivated
+        if o9_run_or_skip('Would you like to save the model' + yes_no):
+            m4_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
 
-        # PROMPT USER INPUT TO SAVE MODEL AFTER PERFORMANCE INDICATED
-        m4_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
 
-
-    """If training, prompt, do you want to attempt testing, 5 seconds to answer"""
-        t1 = time.time()
-        test_count_correct, ave_test_loss = o7_model_no_backprop(model, 'test_loader')
-        print('testing Loss: {:.3f}.. '.format(ave_testing_loss),
-            'testing Accuracy: {:.3f}'.format(test_count_correct / len(test_loader.dataset)),
-            'Runtime - {:.0f} seconds'.format((time.time() - t1)))
-
-    if not arg.train:
-        model, model_hyperparamaters = m3_load_model_checkpoint(model, file_hyperparameters)
+    if arg.train == 'n':
+        model, model_hyperparamaters = m3_load_model_checkpoint(model, file_name_scheme)
 
         learnrate = model_hyperparameters['learnrate']
         training_loss_history = model_hyperparameters['training_loss_history']

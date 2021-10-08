@@ -49,10 +49,6 @@ def m1_download_pretrained_model(model_name):
     for param in model.parameters():
         param.requires_grad = False
 
-    # Rename the pretrained output layer to a default name 'new_output'
-    pretrained_output_name = list(model._modules.items())[-1][0]
-    model._modules['new_output'] = model._modules.pop(pretrained_output_name)
-
     return model
 
 
@@ -60,9 +56,14 @@ def m2_create_classifier(model_name, classes_length):
 
     model = m1_download_pretrained_model(model_name)
 
+    # Rename the pretrained output layer to a default name 'new_output'
+    # pretrained_output_name = list(model._modules.items())[-1][0]
+    # model._modules['new_output'] = model._modules.pop(pretrained_output_name)
+
     # Ensure that the in and out features for our model seamlessly match the in from the pretrained CNN and the out for the classes
-    in_features = model.new_output.weight.shape[1]
     out_features = classes_length
+    in_features = list(model._modules.items())[-1][1].weight.shape[1]
+    model = torch.nn.Sequential(*(list(model.children())[:-1]))
 
     #Replace the fully connected layer(s) at the end of the model with our own fully connected classifier
     model.new_output = Classifier(in_features, out_features)
