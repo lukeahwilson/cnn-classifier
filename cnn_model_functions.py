@@ -41,34 +41,38 @@ class Classifier(nn.Module):
         return x
 
 
-def m1_download_pretrained_model(model_name):
+def m1_create_classifier(model_name, classes_length):
+
     #Download a pretrained convolutional neural network to reference, choose only the model requested by the user
     model = getattr(models, model_name_dic[model_name])(pretrained=True)
+
+    # Ensure that the in and out features for our model seamlessly match the in from the pretrained CNN and the out for the classes
+    # Rename the pretrained output layer to a default name 'new_output'
+    # pretrained_output_name = list(model._modules.items())[-1][0]
+    # model._modules['new_output'] = model._modules.pop(pretrained_output_name)
+    out_features = classes_length
+    in_features = list(model._modules.items())[-1][1].weight.shape[1]
+
+    model = torch.nn.Sequential(*(list(model.children())[:-1]))
 
     #Freeze parameters so we don't backprop through them
     for param in model.parameters():
         param.requires_grad = False
 
-    return model
-
-
-def m2_create_classifier(model_name, classes_length):
-
-    model = m1_download_pretrained_model(model_name)
-
-    # Rename the pretrained output layer to a default name 'new_output'
-    # pretrained_output_name = list(model._modules.items())[-1][0]
-    # model._modules['new_output'] = model._modules.pop(pretrained_output_name)
-
-    # Ensure that the in and out features for our model seamlessly match the in from the pretrained CNN and the out for the classes
-    out_features = classes_length
-    in_features = list(model._modules.items())[-1][1].weight.shape[1]
-    model = torch.nn.Sequential(*(list(model.children())[:-1]))
-
     #Replace the fully connected layer(s) at the end of the model with our own fully connected classifier
     model.new_output = Classifier(in_features, out_features)
 
     return model
+
+
+def m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters):
+    #Save the model state_dict
+    torch.save(model.state_dict(), file_name_scheme + '_dict.pth')
+    model.new_output.state_dict().keys()
+
+    #Create a JSON file containing the saved information above
+    with open(file_name_scheme + '_hyperparameters.json', 'w') as file:
+        json.dump(model_hyperparameters, file)
 
 
 def m3_load_model_checkpoint(model, file_name_scheme):
@@ -103,13 +107,3 @@ def m3_load_model_checkpoint(model, file_name_scheme):
     plt.legend(frameon=False)
 
     return model, model_hyperparamaters
-
-
-def m4_save_model_checkpoint(model, file_name_scheme, model_hyperparameters):
-    #Save the model state_dict
-    torch.save(model.state_dict(), file_name_scheme + '_dict.pth')
-    model.new_output.state_dict().keys()
-
-    #Create a JSON file containing the saved information above
-    with open(file_name_scheme + '_hyperparameters.json', 'w') as file:
-        json.dump(model_hyperparameters, file)
