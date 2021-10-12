@@ -53,7 +53,7 @@ def main():
 
     # Get arguments
     arg = o1_get_input_args()
-    yes_no = ': \'y\' for yes, \'n\' for no (10 seconds to choose no): '
+
 
     # Get processed data
     dict_datasets, data_labels_dic = o2_load_processed_data(arg.dir)
@@ -64,20 +64,20 @@ def main():
     criterion = nn.NLLLoss()
 
     # Download a classifer model for use
-    model = m2_create_classifier(arg.model, len(dict_datasets['train_data'].classes))
+    model = m1_create_classifier(arg.model, len(dict_datasets['train_data'].classes))
 
     if arg.train == 'y':
         print('Displaying an example processed image from the training and validation sets')
         plt.imshow(dict_datasets['train_data'][0][0].numpy().transpose((1, 2, 0)))
         plt.imshow(dict_datasets['valid_data'][0][0].numpy().transpose((1, 2, 0)))
 
-        if o9_run_or_skip('Check model can overfit small dataset' + yes_no):
-            model, model_hyperparamaters = o5_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', criterion)
+        if u1_time_limited_input('Check model can overfit small dataset'):
+            overfit_model, model_hyperparamaters = o5_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', criterion)
 
-        if o9_run_or_skip('Continue with complete model training' + yes_no):
+        if u1_time_limited_input('Continue with complete model training'):
             model, model_hyperparamaters = o5_train_model(model, dict_data_loaders, arg.epoch, 'train_loader', criterion)
 
-        if o9_run_or_skip('Would you like to test the model' + yes_no):
+        if u1_time_limited_input('Would you like to test the model'):
             t1 = time.time()
             test_count_correct, ave_test_loss = o7_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
             print('testing Loss: {:.3f}.. '.format(ave_test_loss),
@@ -85,8 +85,8 @@ def main():
                 'Runtime - {:.0f} seconds'.format((time.time() - t1)))
 
         #Save the model hyperparameters and the locations in which the CNN training activated and deactivated
-        if o9_run_or_skip('Would you like to save the model' + yes_no):
-            m4_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
+        if u1_time_limited_input('Would you like to save the model'):
+            m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
 
 
     if arg.train == 'n':
@@ -99,9 +99,6 @@ def main():
         running_count = model_hyperparameters['running_count']
 
         print('The model is ready to provide predictions')
-
-
-
 
     #
     #

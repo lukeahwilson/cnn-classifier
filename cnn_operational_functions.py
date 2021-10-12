@@ -12,6 +12,9 @@
 ##
 
 # Import required libraries
+import json
+import argparse #import python argparse function
+import matplotlib.pyplot as plt
 import time, os, random
 import numpy as np
 import torch
@@ -19,10 +22,7 @@ import torch.nn.functional as F
 from torchvision import transforms, datasets, models
 from torch import nn, optim
 from PIL import Image
-import matplotlib.pyplot as plt
-import argparse #import python argparse function
-import json
-
+from threading import Thread
 
 def o1_get_input_args():
     """
@@ -126,6 +126,7 @@ def o4_data_iterator(dict_datasets):
 
 def o5_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
 
+    print("Using GPU" if torch.cuda.is_available() else "WARNING")
     t0 = time.time() # initialize start time for running training
 
     running_count = 0 # initialize running count in order to track number of epochs fine tuning deeper network
@@ -200,7 +201,6 @@ def o5_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
 
 def o6_model_backprop(model, data_loader, optimizer, criterion):
     # Check model can overfit the data when using a miniscule sample size, looking for high accuracy on a few images
-    print("Using GPU" if torch.cuda.is_available() else "WARNING")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.cuda.empty_cache()
     model.to(device)
@@ -288,18 +288,33 @@ def o7_plot_training_history(loss_history_dic):
 #         probabilities, classes = prediction.topk(topk)
 #     return probabilities, classes
 
-
 def o8_predict_data():
     print(1)
 
-def o9_run_or_skip(user_question):
-    t0 = time.time()
-    while time.time() - t0 < 10:
-        choice = input(user_question)
+def u1_time_limited_input(prompt):
+    TIMEOUT = 5
+    prompt = prompt + f': \'y\' for yes, \'n\' for no ({TIMEOUT} seconds to choose): '
+    user_input_thread = Thread(target=u2_user_input_prompt, args=(prompt,), daemon = True)
+    user_input_thread.start()
+    user_input_thread.join(TIMEOUT)
+    if not answered:
+        print('\n No valid input, proceeding with operation...')
+    return choice
+
+def u2_user_input_prompt(prompt):
+    global choice, answered
+    choice = True
+    answered = False
+    while not answered:
+        choice = input(prompt)
         if choice == 'Y' or choice == 'y':
-            return True
+            print('User input = Yes')
+            choice = True
+            answered = True
         elif choice == 'N' or choice == 'n':
-            return False
+            choice = False
+            answered = True
+            print('User input = No')
         else:
+            choice = False
             print('Error, please use the character inputs \'Y\' and \'N\'')
-    return True
