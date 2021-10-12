@@ -24,28 +24,6 @@ from torch import nn, optim
 from PIL import Image
 from threading import Thread
 
-def o1_get_input_args():
-    """
-    Creates and stores command line arguments inputted by the user. Attaches default arguments and help text to aid user.
-    Command Line Arguments:
-        1. Directory as --dir
-        2. CNN Model as --model
-        3. Data Name Dictionary as --names
-    This function returns these arguments as an ArgumentParser object.
-    Parameters:
-        - None
-    Returns:
-        - Stored command line arguments as an Argument Parser Object with parse_args() data structure
-    """
-
-    parser = argparse.ArgumentParser(description = 'Classify input images and benchmark performance')
-    parser.add_argument('--dir', type=str, default= os.path.expanduser('~')+'/Programming Data/Flower_data/', help='input path for data directory')
-    parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model', choices=['googlenet', 'alexnet', 'resnet'])
-    parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
-    parser.add_argument('--epoch', type=str, default=10, help='provide a whole number for the number of epochs for training')
-    parser.add_argument('--label', type=str, default='', help='flower_to_name.json')
-    return parser.parse_args() #return parsed arguments
-
 
 def o2_load_processed_data(data_dir):
     """
@@ -70,6 +48,7 @@ def o2_load_processed_data(data_dir):
                 data_labels_dic = json.load(f)
                 data_labels_dic = {value : key for (key, value) in data_labels_dic.items()}
     return dict_datasets, data_labels_dic
+
 
 def o3_process_data(transform_request):
     #Define transforms for training, validation, overfitting, and test sets to convert to desirable tensors for processing
@@ -172,22 +151,14 @@ def o5_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
                 model_hyperparameters['learnrate'] *= decay # multiply learnrate by the decay hyperparamater
                 optimizer = optim.Adam(model.new_output.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=weightdecay) # revise the optimizer to use the new learnrate
                 print('\nLearnrate changed to: {:f}\n'.format(model_hyperparameters['learnrate']))
-            if model_hyperparameters['learnrate'] <= startlearn*decay**(9*(decay**3)) and running_count == 0: # super messy, I wanted a general expression that chose when to activate the deeper network and this worked
-                for param in model.inception5a.parameters(): # activate parameters in layer 5a once the learning rate has decayed (9*(decay**3)) number of times
-                    param.requires_grad = True
-                for param in model.inception5b.parameters(): # activate parameters in layer 5b once the learning rate has decayed (9*(decay**3)) number of times
-                    param.requires_grad = True
-                print('\nConvolutional Layers I5A and I5B Training Activated\n')
+            if model_hyperparameters['learnrate'] <= startlearn*decay**(9*(decay**3)) and model_hyperparameters['running_count'] == 0: # super messy, I wanted a general expression that chose when to activate the deeper network and this worked
+                model = m4_control_model_grad(model, True)
                 model_hyperparameters['epoch_on'] = e
                 running = True # change the running parameter to True so that the future loop can start counting epochs that have run
             if running: # if running, add to count for the number of epochs run
                 model_hyperparameters['running_count'] +=1
             if running and model_hyperparameters['running_count'] > epoch/5: # deactivate parameters if running, add the count has reached its limiter
-                for param in model.inception5a.parameters():
-                    param.requires_grad = False
-                for param in model.inception5b.parameters():
-                    param.requires_grad = False
-                print('\nConvolutional Layers I5A and I5B Training Deactivated\n')
+                model = o8_control_model_grad(model, False)
                 running = False
             if type_loader == 'overfit_loader':
                 if np.mean([training_loss_history[-1], training_loss_history[-2], training_loss_history[-3]]) < 0.0001:
@@ -246,6 +217,46 @@ def o7_model_no_backprop(model, data_loader, criterion):
 
 
 
+def o8_control_model_grad(model, control=False):
+    network_depth = len(list(model._modules.items()))
+    param_freeze_depth = network_depth // 3
+    controlled_layers = []
+    layer_depth = 0
+
+    for layer in list(model._modules.items()):
+        layer_depth += 1
+        if (network_depth - param_freeze_depth) < layer_depth < network_depth:
+            controlled_layers.append(layer[0])
+            for param in child.parameters():
+                param.requires_grad = control
+    print(f'requires_grad = {control}: ', controlled_layers)
+    return model
+
+
+
+def o1_get_input_args():
+    """
+    Creates and stores command line arguments inputted by the user. Attaches default arguments and help text to aid user.
+    Command Line Arguments:
+        1. Directory as --dir
+        2. CNN Model as --model
+        3. Data Name Dictionary as --names
+    This function returns these arguments as an ArgumentParser object.
+    Parameters:
+        - None
+    Returns:
+        - Stored command line arguments as an Argument Parser Object with parse_args() data structure
+    """
+
+    parser = argparse.ArgumentParser(description = 'Classify input images and benchmark performance')
+    parser.add_argument('--dir', type=str, default= os.path.expanduser('~')+'/Programming Data/Flower_data/', help='input path for data directory')
+    parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model', choices=['googlenet', 'alexnet', 'resnet'])
+    parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
+    parser.add_argument('--epoch', type=str, default=10, help='provide a whole number for the number of epochs for training')
+    parser.add_argument('--label', type=str, default='', help='flower_to_name.json')
+    return parser.parse_args() #return parsed arguments
+
+
 def o7_plot_training_history(loss_history_dic):
 
     plt.plot(training_loss_history, label='Training Training Loss')
@@ -288,11 +299,13 @@ def o7_plot_training_history(loss_history_dic):
 #         probabilities, classes = prediction.topk(topk)
 #     return probabilities, classes
 
+
 def o8_predict_data():
     print(1)
 
+
 def u1_time_limited_input(prompt):
-    TIMEOUT = 5
+    TIMEOUT = 10
     prompt = prompt + f': \'y\' for yes, \'n\' for no ({TIMEOUT} seconds to choose): '
     user_input_thread = Thread(target=u2_user_input_prompt, args=(prompt,), daemon = True)
     user_input_thread.start()
@@ -300,6 +313,7 @@ def u1_time_limited_input(prompt):
     if not answered:
         print('\n No valid input, proceeding with operation...')
     return choice
+
 
 def u2_user_input_prompt(prompt):
     global choice, answered

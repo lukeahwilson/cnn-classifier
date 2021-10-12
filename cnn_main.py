@@ -68,8 +68,8 @@ def main():
 
     if arg.train == 'y':
         print('Displaying an example processed image from the training and validation sets')
-        plt.imshow(dict_datasets['train_data'][0][0].numpy().transpose((1, 2, 0)))
-        plt.imshow(dict_datasets['valid_data'][0][0].numpy().transpose((1, 2, 0)))
+        # plt.imshow(dict_datasets['train_data'][0][0].numpy().transpose((1, 2, 0)))
+        # plt.imshow(dict_datasets['valid_data'][0][0].numpy().transpose((1, 2, 0)))
 
         if u1_time_limited_input('Check model can overfit small dataset'):
             overfit_model, model_hyperparamaters = o5_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', criterion)
