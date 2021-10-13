@@ -19,10 +19,6 @@
 # Import required libraries
 import time, os, random
 import numpy as np
-import torch
-import torch.nn.functional as F
-from torchvision import transforms, datasets, models
-from torch import nn, optim
 from PIL import Image
 import matplotlib.pyplot as plt
 
@@ -68,19 +64,21 @@ def main():
     model = m1_create_classifier(arg.model, len(dict_datasets['train_data'].classes))
 
     if arg.train == 'y':
-        print('Displaying an example processed image from the training and validation sets')
-        # plt.imshow(dict_datasets['train_data'][0][0].numpy().transpose((1, 2, 0)))
-        # plt.imshow(dict_datasets['valid_data'][0][0].numpy().transpose((1, 2, 0)))
+        print('Displaying an example processed image from the training set..')
+        plt.imshow(random.choice(dict_datasets['train_data'])[0].numpy().transpose((1, 2, 0)))
+        plt.show(block=False)
+        plt.pause(3)
+        plt.close()
 
         if u5_time_limited_input('Check model can overfit small dataset'):
-            overfit_model, model_hyperparamaters = o1_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', criterion)
-
+            overfit_model, model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', criterion)
+            o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme, 'overfit')
         if u5_time_limited_input('Continue with complete model training'):
-            model, model_hyperparamaters = o1_train_model(model, dict_data_loaders, arg.epoch, 'train_loader', criterion)
-
+            model, model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch, 'train_loader', criterion)
+            o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme, 'complete')
         if u5_time_limited_input('Would you like to test the model'):
             t1 = time.time()
-            test_count_correct, ave_test_loss = o7_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
+            test_count_correct, ave_test_loss = o3_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
             print('testing Loss: {:.3f}.. '.format(ave_test_loss),
                 'testing Accuracy: {:.3f}'.format(test_count_correct / len(dict_data_loaders['testing_loader'].dataset)),
                 'Runtime - {:.0f} seconds'.format((time.time() - t1)))
@@ -89,9 +87,9 @@ def main():
         if u5_time_limited_input('Would you like to save the model'):
             m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
 
-
     if arg.train == 'n':
-        model, model_hyperparamaters = m3_load_model_checkpoint(model, file_name_scheme)
+        model, model_hyperparameters = m3_load_model_checkpoint(model, file_name_scheme)
+        o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme)
 
         learnrate = model_hyperparameters['learnrate']
         training_loss_history = model_hyperparameters['training_loss_history']
@@ -101,24 +99,10 @@ def main():
 
         print('The model is ready to provide predictions')
 
-    #
-    #
-    #
-    # u3_load_model_checkpoint():
-    #
-    # o3_attempt_overfitting_model():
-    #
-    # o4_train_model():
-    #
-    # u4_plot_training_history():
-    #
-    # u5_test_model():
-    #
-    # u6_save_model_checkpoint():
-    #
-    # o5_predict_data():
-    #
-    # u7_show_prediction():
+        #
+        # o6_predict_data():
+        #
+        # u7_show_prediction():
 
 if __name__ == "__main__":
     main()

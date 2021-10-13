@@ -14,8 +14,7 @@
 # Import required libraries
 import json
 import argparse #import python argparse function
-import matplotlib.pyplot as plt
-import time, os, random
+import os, random
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -144,46 +143,25 @@ def u6_user_input_prompt(prompt):
     while not answered:
         choice = input(prompt)
         if choice == 'Y' or choice == 'y':
-            print('User input = Yes')
+            print('User input = Yes\n')
             choice = True
             answered = True
         elif choice == 'N' or choice == 'n':
             choice = False
             answered = True
-            print('User input = No')
+            print('User input = No\n')
         else:
             choice = False
             print('Error, please use the character inputs \'Y\' and \'N\'')
 
 
-def u7_plot_training_history(loss_history_dic):
-
-    plt.plot(training_loss_history, label='Training Training Loss')
-    plt.plot(validate_loss_history, label='Validate Training Loss')
-    plt.vlines(
-        colors = 'black',
-        x = epoch_on,
-        ymin = min(training_loss_history),
-        ymax = max(training_loss_history[5:]),
-        linestyles = 'dotted',
-        label = 'Deep Layers Activated'
-    ).set_clip_on(False)
-    plt.vlines(
-        colors = 'black',
-        x = epoch_on + running_count,
-        ymin = min(training_loss_history),
-        ymax = max(training_loss_history[5:]),
-        linestyles = 'dotted',
-        label = 'Deep Layers Deactivated'
-    ).set_clip_on(False)
-    plt.ylabel('Total Loss')
-    plt.xlabel('Total Epoch ({})'.format(len(training_loss_history)))
-    plt.legend(frameon=False)
-
-# def u8_get_image(image_path):
+# def u7_get_image(image_path):
 #     ''' Process raw image for input to deep learning model
 #     '''
 #     image_open = Image.open(image_path) # access image at pathway, open the image and store it as a PIL image
 #     tensor_image = flower_transform(image_open) # transform PIL image and simultaneously convert image to a tensor (no need for .clone().detach())
 #     input_image = torch.unsqueeze(tensor_image, 0) # change image shape from a stand alone image tensor, to a list of image tensors with length = 1
 #     return input_image # return processed image
+
+
+# def u8_show_image():

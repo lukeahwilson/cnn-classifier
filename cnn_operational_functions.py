@@ -12,17 +12,14 @@
 ##
 
 # Import required libraries
-import json
-import argparse #import python argparse function
 import matplotlib.pyplot as plt
-import time, os, random
+import time
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torchvision import transforms, datasets, models
 from torch import nn, optim
 from PIL import Image
-from threading import Thread
 
 
 def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
@@ -38,12 +35,13 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
                          'training_loss_history': [],
                          'validate_loss_history': [],
                          'epoch_on': [],
-                         'running_count': 0}
+                         'running_count': 0,
+                         'weightdecay' : 0.00001}
+
     startlearn = model_hyperparameters['learnrate']
-    weightdecay = 0.00001
 
     # Only train the classifier (new_output) parameters, feature parameters are frozen
-    optimizer = optim.Adam(model.new_output.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=weightdecay)
+    optimizer = optim.Adam(model.new_output.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay'])
 
     if type_loader == 'overfit_loader':
         decay = 0.9 # hyperparameter decay factor for decaying learning rate
@@ -61,17 +59,17 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
         model_hyperparameters['validate_loss_history'].append(ave_validate_loss) # append ave validate loss to history of validate losses
 
         print('Epoch: {}/{}.. '.format(e+1, epoch),
-            'Training Loss: {:.3f}.. '.format(ave_training_loss),
-            'Validate Loss: {:.3f}.. '.format(ave_validate_loss),
-            'Validate Accuracy: {:.3f}'.format(epoch_count_correct / len(dict_data_loaders['valid_loader'].dataset)),
+            'Train Loss: {:.3f}.. '.format(ave_training_loss),
+            'Valid Loss: {:.3f}.. '.format(ave_validate_loss),
+            'Valid Accuracy: {:.3f}.. '.format(epoch_count_correct / len(dict_data_loaders['valid_loader'].dataset)),
             'Runtime - {:.0f} minutes'.format((time.time() - t0)/60))
 
         training_loss_history = model_hyperparameters['training_loss_history']
         if len(training_loss_history) > 3: # hold loop until training_loss_history has enough elements to satisfy search requirements
             if -3*model_hyperparameters['learnrate']*decay*decay*training_loss_history[0] > np.mean([training_loss_history[-2]-training_loss_history[-1], training_loss_history[-3]-training_loss_history[-2]]):
                 # if the average of the last 2 training loss slopes is less than the original loss factored down by the learnrate, the decay, and a factor of 3, then decay the learnrate
-                model_hyperparameters['learnrate'] *= decay # multiply learnrate by the decay hyperparamater
-                optimizer = optim.Adam(model.new_output.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=weightdecay) # revise the optimizer to use the new learnrate
+                model_hyperparameters['learnrate'] *= decay # multiply learnrate by the decay hyperparameter
+                optimizer = optim.Adam(model.new_output.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay']) # revise the optimizer to use the new learnrate
                 print('\nLearnrate changed to: {:f}\n'.format(model_hyperparameters['learnrate']))
             if model_hyperparameters['learnrate'] <= startlearn*decay**(9*(decay**3)) and model_hyperparameters['running_count'] == 0: # super messy, I wanted a general expression that chose when to activate the deeper network and this worked
                 model = o4_control_model_grad(model, True)
@@ -83,13 +81,13 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
                 model = o4_control_model_grad(model, False)
                 running = False
             if type_loader == 'overfit_loader':
-                if np.mean([training_loss_history[-1], training_loss_history[-2], training_loss_history[-3]]) < 0.0001:
+                if np.mean([training_loss_history[-1], training_loss_history[-2], training_loss_history[-3]]) < 0.0002:
                     print('\nModel successfully overfit images')
-                    return model, model_hyperparamaters
+                    return model, model_hyperparameters
                 if e+1 == epoch:
                     print('\nModel failed to overfit images')
 
-    return model, model_hyperparamaters
+    return model, model_hyperparameters
 
 
 def o2_model_backprop(model, data_loader, optimizer, criterion):
@@ -154,8 +152,36 @@ def o4_control_model_grad(model, control=False):
     print(f'\n Toggle requires_grad = {control}: ', controlled_layers, '\n')
     return model
 
+
+def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme, training_type):
+    plt.plot(model_hyperparameters['training_loss_history'], label='Training Training Loss')
+    plt.plot(model_hyperparameters['validate_loss_history'], label='Validate Training Loss')
+    if model_hyperparameters['epoch_on']:
+        plt.vlines(
+            colors = 'black',
+            x = model_hyperparameters['epoch_on'],
+            ymin = min(model_hyperparameters['training_loss_history']),
+            ymax = max(model_hyperparameters['training_loss_history'][3:]),
+            linestyles = 'dotted',
+            label = 'Deep Layers Activated'
+        ).set_clip_on(False)
+        plt.vlines(
+            colors = 'black',
+            x = (model_hyperparameters['epoch_on'] + model_hyperparameters['running_count']),
+            ymin = min(model_hyperparameters['training_loss_history']),
+            ymax = max(model_hyperparameters['training_loss_history'][3:]),
+            linestyles = 'dotted',
+            label = 'Deep Layers Deactivated'
+        ).set_clip_on(False)
+    plt.title(model_name)
+    plt.ylabel('Total Loss')
+    plt.xlabel('Total Epoch ({})'.format(len(model_hyperparameters['training_loss_history'])))
+    plt.legend(frameon=False)
+    plt.savefig(file_name_scheme + '_' + training_type + '_training_history.png')
+    print(f'Saved {training_type} training history to project directory')
+
 #
-# def prediction(image_path, model, topk=5):
+# def o6_predict_data(image_path, model, topk=5):
 #     ''' Compute probabilities for various classes for an image using a trained deep learning model.
 #     '''
 #     model.eval()
@@ -164,7 +190,3 @@ def o4_control_model_grad(model, control=False):
 #         prediction = torch.exp(model(input_image))
 #         probabilities, classes = prediction.topk(topk)
 #     return probabilities, classes
-
-
-def o5_predict_data():
-    print(1)

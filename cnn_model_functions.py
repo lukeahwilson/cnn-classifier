@@ -9,6 +9,7 @@
 ##
 
 # Import required libraries
+import json
 import time, os, random
 import numpy as np
 import torch
@@ -80,30 +81,9 @@ def m3_load_model_checkpoint(model, file_name_scheme):
     checkpoint = torch.load(file_name_scheme + '_dict.pth')
     model.load_state_dict(checkpoint)
 
-    with open(file_name_scheme + '_hyperparameters', 'r') as file:
+    with open(file_name_scheme + '_hyperparameters.json', 'r') as file:
         model_hyperparameters = json.load(file)
 
-    print('loaded model learnrate = ', learnrate)
-    plt.plot(training_loss_history, label='Training Training Loss')
-    plt.plot(validate_loss_history, label='Validate Training Loss')
-    plt.vlines(
-        colors = 'black',
-        x = epoch_on,
-        ymin = min(training_loss_history),
-        ymax = max(training_loss_history[5:]),
-        linestyles = 'dotted',
-        label = 'CNN Layers Activated'
-    ).set_clip_on(False)
-    plt.vlines(
-        colors = 'black',
-        x = epoch_on + running_count,
-        ymin = min(training_loss_history),
-        ymax = max(training_loss_history[5:]),
-        linestyles = 'dotted',
-        label = 'CNN Layers Deactivated'
-    ).set_clip_on(False)
-    plt.ylabel('Total Loss')
-    plt.xlabel('Total Epoch ({})'.format(len(training_loss_history)))
-    plt.legend(frameon=False)
+    print('loaded model learnrate = ', model_hyperparameters['learnrate'])
 
-    return model, model_hyperparamaters
+    return model, model_hyperparameters
