@@ -140,18 +140,18 @@ def o3_model_no_backprop(model, data_loader, criterion):
 
 
 def o4_control_model_grad(model, control=False):
-    network_depth = len(list(model._modules.items()))
-    param_freeze_depth = network_depth // 3
+    network_depth = len(list(model.children()))
+    param_freeze_depth = network_depth // 2
     controlled_layers = []
     layer_depth = 0
 
-    for layer in list(model._modules.items()):
+    for layer in model.children():
         layer_depth += 1
         if (network_depth - param_freeze_depth) < layer_depth < network_depth:
-            controlled_layers.append(layer[0])
-            for param in child.parameters():
+            controlled_layers.append(layer._get_name())
+            for param in layer.parameters():
                 param.requires_grad = control
-    print(f'requires_grad = {control}: ', controlled_layers)
+    print(f'\n Toggle requires_grad = {control}: ', controlled_layers, '\n')
     return model
 
 #
