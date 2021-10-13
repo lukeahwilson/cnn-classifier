@@ -27,6 +27,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 from cnn_model_functions import *
+from cnn_utility_functions import *
 from cnn_operational_functions  import *
 
 
@@ -52,12 +53,12 @@ def main():
     start_program_time = time.time()
 
     # Get arguments
-    arg = o1_get_input_args()
+    arg = u1_get_input_args()
 
 
     # Get processed data
-    dict_datasets, data_labels_dic = o2_load_processed_data(arg.dir)
-    dict_data_loaders = o4_data_iterator(dict_datasets)
+    dict_datasets, data_labels_dic = u2_load_processed_data(arg.dir)
+    dict_data_loaders = u4_data_iterator(dict_datasets)
 
     #Create file pathway for hyperparameter saving to JSON format later
     file_name_scheme = os.path.basename(os.path.dirname(arg.dir)) + '_' + arg.model
@@ -71,13 +72,13 @@ def main():
         # plt.imshow(dict_datasets['train_data'][0][0].numpy().transpose((1, 2, 0)))
         # plt.imshow(dict_datasets['valid_data'][0][0].numpy().transpose((1, 2, 0)))
 
-        if u1_time_limited_input('Check model can overfit small dataset'):
-            overfit_model, model_hyperparamaters = o5_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', criterion)
+        if u5_time_limited_input('Check model can overfit small dataset'):
+            overfit_model, model_hyperparamaters = o1_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', criterion)
 
-        if u1_time_limited_input('Continue with complete model training'):
-            model, model_hyperparamaters = o5_train_model(model, dict_data_loaders, arg.epoch, 'train_loader', criterion)
+        if u5_time_limited_input('Continue with complete model training'):
+            model, model_hyperparamaters = o1_train_model(model, dict_data_loaders, arg.epoch, 'train_loader', criterion)
 
-        if u1_time_limited_input('Would you like to test the model'):
+        if u5_time_limited_input('Would you like to test the model'):
             t1 = time.time()
             test_count_correct, ave_test_loss = o7_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
             print('testing Loss: {:.3f}.. '.format(ave_test_loss),
@@ -85,7 +86,7 @@ def main():
                 'Runtime - {:.0f} seconds'.format((time.time() - t1)))
 
         #Save the model hyperparameters and the locations in which the CNN training activated and deactivated
-        if u1_time_limited_input('Would you like to save the model'):
+        if u5_time_limited_input('Would you like to save the model'):
             m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
 
 
