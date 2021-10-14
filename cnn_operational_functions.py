@@ -62,7 +62,7 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
             'Train Loss: {:.3f}.. '.format(ave_training_loss),
             'Valid Loss: {:.3f}.. '.format(ave_validate_loss),
             'Valid Accuracy: {:.3f}.. '.format(epoch_count_correct / len(dict_data_loaders['valid_loader'].dataset)),
-            'Runtime - {:.0f} minutes'.format((time.time() - t0)/60))
+            'Runtime - {:.0f} mins'.format((time.time() - t0)/60))
 
         training_loss_history = model_hyperparameters['training_loss_history']
         if len(training_loss_history) > 3: # hold loop until training_loss_history has enough elements to satisfy search requirements
@@ -70,7 +70,7 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
                 # if the average of the last 2 training loss slopes is less than the original loss factored down by the learnrate, the decay, and a factor of 3, then decay the learnrate
                 model_hyperparameters['learnrate'] *= decay # multiply learnrate by the decay hyperparameter
                 optimizer = optim.Adam(model.new_output.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay']) # revise the optimizer to use the new learnrate
-                print('\nLearnrate changed to: {:f}\n'.format(model_hyperparameters['learnrate']))
+                print('Learnrate changed to: {:f}'.format(model_hyperparameters['learnrate']))
             if model_hyperparameters['learnrate'] <= startlearn*decay**(9*(decay**3)) and model_hyperparameters['running_count'] == 0: # super messy, I wanted a general expression that chose when to activate the deeper network and this worked
                 model = o4_control_model_grad(model, True)
                 model_hyperparameters['epoch_on'] = e
@@ -82,10 +82,10 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
                 running = False
             if type_loader == 'overfit_loader':
                 if np.mean([training_loss_history[-1], training_loss_history[-2], training_loss_history[-3]]) < 0.0002:
-                    print('\nModel successfully overfit images')
+                    print('\nModel successfully overfit images\n')
                     return model, model_hyperparameters
                 if e+1 == epoch:
-                    print('\nModel failed to overfit images')
+                    print('\nModel failed to overfit images\n')
 
     return model, model_hyperparameters
 
@@ -153,7 +153,8 @@ def o4_control_model_grad(model, control=False):
     return model
 
 
-def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme, training_type):
+def o5_plot_training_history(model_name, model_hyperparameters):
+    plt.clf()
     plt.plot(model_hyperparameters['training_loss_history'], label='Training Training Loss')
     plt.plot(model_hyperparameters['validate_loss_history'], label='Validate Training Loss')
     if model_hyperparameters['epoch_on']:
@@ -177,8 +178,6 @@ def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme
     plt.ylabel('Total Loss')
     plt.xlabel('Total Epoch ({})'.format(len(model_hyperparameters['training_loss_history'])))
     plt.legend(frameon=False)
-    plt.savefig(file_name_scheme + '_' + training_type + '_training_history.png')
-    print(f'Saved {training_type} training history to project directory')
 
 #
 # def o6_predict_data(image_path, model, topk=5):

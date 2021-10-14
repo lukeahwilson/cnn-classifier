@@ -72,10 +72,16 @@ def main():
 
         if u5_time_limited_input('Check model can overfit small dataset'):
             overfit_model, model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', criterion)
-            o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme, 'overfit')
+            o5_plot_training_history(arg.model, model_hyperparameters)
+            plt.savefig(file_name_scheme + '_training_history_overfit.png')
+            print('Saved overfit training history to project directory')
+
         if u5_time_limited_input('Continue with complete model training'):
             model, model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch, 'train_loader', criterion)
-            o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme, 'complete')
+            o5_plot_training_history(arg.model, model_hyperparameters)
+            plt.savefig(file_name_scheme + '_training_history_complete.png')
+            print('Saved complete training history to project directory')
+
         if u5_time_limited_input('Would you like to test the model'):
             t1 = time.time()
             test_count_correct, ave_test_loss = o3_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
@@ -89,7 +95,10 @@ def main():
 
     if arg.train == 'n':
         model, model_hyperparameters = m3_load_model_checkpoint(model, file_name_scheme)
-        o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme)
+        o5_plot_training_history(arg.model, model_hyperparameters)
+        plt.show(block=False)
+        plt.pause(3)
+        plt.close()
 
         learnrate = model_hyperparameters['learnrate']
         training_loss_history = model_hyperparameters['training_loss_history']
