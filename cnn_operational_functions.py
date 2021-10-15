@@ -40,8 +40,8 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
 
     startlearn = model_hyperparameters['learnrate']
 
-    # Only train the classifier (new_output) parameters, feature parameters are frozen
-    optimizer = optim.Adam(model.new_output.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay'])
+    # Only train the replaced fully connected classifier parameters, feature parameters are frozen
+    optimizer = optim.Adam(getattr(model, list(model._modules.items())[-1][0]).parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay'])
 
     if type_loader == 'overfit_loader':
         decay = 0.9 # hyperparameter decay factor for decaying learning rate
@@ -69,7 +69,7 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
             if -3*model_hyperparameters['learnrate']*decay*decay*training_loss_history[0] > np.mean([training_loss_history[-2]-training_loss_history[-1], training_loss_history[-3]-training_loss_history[-2]]):
                 # if the average of the last 2 training loss slopes is less than the original loss factored down by the learnrate, the decay, and a factor of 3, then decay the learnrate
                 model_hyperparameters['learnrate'] *= decay # multiply learnrate by the decay hyperparameter
-                optimizer = optim.Adam(model.new_output.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay']) # revise the optimizer to use the new learnrate
+                optimizer = optim.Adam(getattr(model, list(model._modules.items())[-1][0]).parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay']) # revise the optimizer to use the new learnrate
                 print('Learnrate changed to: {:f}'.format(model_hyperparameters['learnrate']))
             if model_hyperparameters['learnrate'] <= startlearn*decay**(9*(decay**3)) and model_hyperparameters['running_count'] == 0: # super messy, I wanted a general expression that chose when to activate the deeper network and this worked
                 model = o4_control_model_grad(model, True)
