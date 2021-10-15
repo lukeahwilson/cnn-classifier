@@ -62,6 +62,7 @@ def main():
 
     # Download a classifer model for use
     model = m1_create_classifier(arg.model, len(dict_datasets['train_data'].classes))
+    print(model)
 
     if arg.train == 'y':
         print('Displaying an example processed image from the training set..')

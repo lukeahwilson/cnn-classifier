@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 
 # Store a dictionary of available models as names to avoid downloading models until a choice has been made
 model_name_dic = {'vgg': 'vgg16', 'alexnet': 'alexnet', 'googlenet': 'googlenet', 'densenet': 'densenet161',
-          'inception': 'inception_v3', 'resnext50': 'resnext50_32x4d', 'shufflenet': 'shufflenet_v2_x1_0'}
+          'inception': 'inception_v3', 'resnext': 'resnext50_32x4d', 'shufflenet': 'shufflenet_v2_x1_0'}
 
 
 #Create a Classifier class, inheriting from nn.Module and incorporating Relu, Dropout and log_softmax
