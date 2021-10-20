@@ -142,7 +142,7 @@ def o4_control_model_grad(model, control=False):
     param_freeze_depth = network_depth // 2
     controlled_layers = []
     layer_depth = 0
-
+    #Doesn't get deeper nested layers
     for layer in model.children():
         layer_depth += 1
         if (network_depth - param_freeze_depth) < layer_depth < network_depth:
