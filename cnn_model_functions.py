@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 
 # Store a dictionary of available models as names to avoid downloading models until a choice has been made
 model_name_dic = {'vgg': 'vgg16', 'alexnet': 'alexnet', 'googlenet': 'googlenet', 'densenet': 'densenet161',
-          'inception': 'inception_v3', 'resnext': 'resnext50_32x4d', 'shufflenet': 'shufflenet_v2_x1_0'}
+                  'resnext': 'resnext50_32x4d', 'shufflenet': 'shufflenet_v2_x1_0'}
 
 
 #Create a Classifier class, inheriting from nn.Module and incorporating Relu, Dropout and log_softmax
@@ -52,7 +52,11 @@ def m1_create_classifier(model_name, classes_length):
     # pretrained_output_name = list(model._modules.items())[-1][0]
     # model._modules['new_output'] = model._modules.pop(pretrained_output_name)
     out_features = classes_length
-    in_features = list(model.children())[-1][1].weight.shape[1]
+
+    for module in list(model.modules()):
+        if module._get_name() == 'Linear':
+            in_features = module.weight.shape[1]
+            break
 
     #Freeze parameters so we don't backprop through them
     for param in model.parameters():

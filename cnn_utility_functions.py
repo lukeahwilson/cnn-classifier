@@ -43,8 +43,8 @@ def u1_get_input_args():
     parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
     parser.add_argument('--epoch', type=str, default=100, help='provide the number of epochs for training (default 100)')
     parser.add_argument('--label', type=str, default='', help='flower_to_name.json')
-    parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model', choices=['vgg', 'alexnet', 'googlenet',
-                        'densenet', 'inception', 'resnext', 'shufflenet'])
+    parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model',
+                        choices=['vgg', 'alexnet', 'googlenet', 'densenet', 'resnext', 'shufflenet'])
 
     return parser.parse_args() #return parsed arguments
 
@@ -80,7 +80,7 @@ def u3_process_data(transform_request):
     #Define image size
     image_1d_size = 224
 
-    predict_transform = transforms.Compose([transforms.Resize(int(np.round_(256, decimals=0))),
+    predict_transform = transforms.Compose([transforms.Resize(int(np.round_(image_1d_size*1.1, decimals=0))),
                                             transforms.CenterCrop(image_1d_size),
                                             transforms.ToTensor(),
                                             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
@@ -138,9 +138,9 @@ def u5_time_limited_input(prompt):
     return choice
 
 
-def u6_user_input_prompt(prompt):
+def u6_user_input_prompt(prompt, default=True):
     global choice, answered
-    choice = True
+    choice = default
     answered = False
     while not answered:
         choice = input(prompt)
@@ -153,7 +153,7 @@ def u6_user_input_prompt(prompt):
             answered = True
             print('User input = No\n')
         else:
-            choice = False
+            choice=choice
             print('Error, please use the character inputs \'Y\' and \'N\'')
 
 

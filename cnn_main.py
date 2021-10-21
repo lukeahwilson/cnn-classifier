@@ -81,17 +81,9 @@ def main():
             o5_plot_training_history(arg.model, model_hyperparameters)
             plt.savefig(file_name_scheme + '_training_history_complete.png')
             print('Saved complete training history to project directory')
-
-        if u5_time_limited_input('Would you like to test the model'):
-            t1 = time.time()
-            test_count_correct, ave_test_loss = o3_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
-            print('testing Loss: {:.3f}.. '.format(ave_test_loss),
-                'testing Accuracy: {:.3f}'.format(test_count_correct / len(dict_data_loaders['testing_loader'].dataset)),
-                'Runtime - {:.0f} seconds'.format((time.time() - t1)))
-
-        #Save the model hyperparameters and the locations in which the CNN training activated and deactivated
-        if u5_time_limited_input('Would you like to save the model'):
-            m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
+            #Save the model hyperparameters and the locations in which the CNN training activated and deactivated
+            if u5_time_limited_input('Would you like to save the model'):
+                m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
 
     if arg.train == 'n':
         model, model_hyperparameters = m3_load_model_checkpoint(model, file_name_scheme)
@@ -112,6 +104,13 @@ def main():
         # o6_predict_data():
         #
         # u7_show_prediction():
+
+    if u5_time_limited_input('Would you like to test the model'):
+        t1 = time.time()
+        test_count_correct, ave_test_loss = o3_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
+        print('testing Loss: {:.3f}.. '.format(ave_test_loss),
+            'testing Accuracy: {:.3f}'.format(test_count_correct / len(dict_data_loaders['testing_loader'].dataset)),
+            'Runtime - {:.0f} seconds'.format((time.time() - t1)))
 
 if __name__ == "__main__":
     main()
