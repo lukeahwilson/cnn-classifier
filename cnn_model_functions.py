@@ -27,22 +27,31 @@ model_name_dic = {'vgg': 'vgg16', 'alexnet': 'alexnet', 'googlenet': 'googlenet'
 
 #Create a Classifier class, inheriting from nn.Module and incorporating Relu, Dropout and log_softmax
 class Classifier(nn.Module):
-    def __init__(self, in_features, out_features):
+    def __init__(self, in_features, hidden_layers, out_features):
         super().__init__()
         self.in_features = in_features
+        self.hidden_layers = hidden_layers
         self.out_features = out_features
-        self.fc1 = nn.Linear(self.in_features, 512)
-        self.fc2 = nn.Linear(512, self.out_features)
+        self._index = 1
+        while self._index < self.hidden_layers:
+            setattr(self, 'fc'+str(self._index), nn.Linear(round(self.in_features/(2**(self._index-1))), round(self.in_features/(2**self._index))))
+            self._index += 1
+        setattr(self, 'fc'+str(self._index), nn.Linear(round(self.in_features/(2**(self._index-1))), self.out_features))
         self.dropout = nn.Dropout(p=0.3)
 
     def forward(self, x):
         x = x.view(x.shape[0], -1)
-        x = self.dropout(F.relu(self.fc1(x)))
-        x = F.log_softmax(self.fc2(x), dim=1)
+
+        self._index = 1
+        while self._index < self.hidden_layers:
+            x = self.dropout(F.relu(getattr(self,'fc'+str(self._index))(x)))
+            self._index += 1
+
+        x = F.log_softmax(getattr(self,'fc'+str(self._index))(x), dim=1)
         return x
 
 
-def m1_create_classifier(model_name, classes_length):
+def m1_create_classifier(model_name, hidden_layers, classes_length):
 
     #Download a pretrained convolutional neural network to reference, choose only the model requested by the user
     model = getattr(models, model_name_dic[model_name])(pretrained=True)
@@ -63,7 +72,8 @@ def m1_create_classifier(model_name, classes_length):
         param.requires_grad = False
 
     #Replace the fully connected layer(s) at the end of the model with our own fully connected classifier
-    setattr(model, list(model._modules.items())[-1][0], Classifier(in_features, out_features))
+    setattr(model, list(model._modules.items())[-1][0], Classifier(in_features, hidden_layers, out_features))
+    print('\nUsing ', model_name, ' with the following attached ', hidden_layers, ' layer classifier:\n', list(model.children())[-1])
 
     return model
 

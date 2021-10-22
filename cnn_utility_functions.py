@@ -41,7 +41,9 @@ def u1_get_input_args():
     parser = argparse.ArgumentParser(description = 'Classify input images and benchmark performance')
     parser.add_argument('--dir', type=str, default= os.path.expanduser('~')+'/Programming Data/Flower_data/', help='input path for data directory')
     parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
-    parser.add_argument('--epoch', type=str, default=100, help='provide the number of epochs for training (default 100)')
+    parser.add_argument('--epoch', type=int, default=100, help='provide the number of epochs for training (default 100)')
+    parser.add_argument('--layer', type=int, default=2, help='provide the number of hidden layers to use (default 2)')
+    parser.add_argument('--learn', type=int, default=0.003, help='provide the learning rate to begin training (default 0.003)')
     parser.add_argument('--label', type=str, default='', help='flower_to_name.json')
     parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model',
                         choices=['vgg', 'alexnet', 'googlenet', 'densenet', 'resnext', 'shufflenet'])

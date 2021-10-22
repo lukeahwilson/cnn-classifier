@@ -22,7 +22,7 @@ from torch import nn, optim
 from PIL import Image
 
 
-def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
+def o1_train_model(model, dict_data_loaders, epoch, learnrate, type_loader, criterion):
 
     print("Using GPU" if torch.cuda.is_available() else "WARNING")
     t0 = time.time() # initialize start time for running training
@@ -31,7 +31,7 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
     running = False # initialize running variable to start system with deeper network frozen
 
     # Define default hyperparameters: learning rate and weight decay
-    model_hyperparameters = {'learnrate': 0.003,
+    model_hyperparameters = {'learnrate': learnrate,
                          'training_loss_history': [],
                          'validate_loss_history': [],
                          'epoch_on': [],
@@ -51,7 +51,6 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, criterion):
         decay = 0.6 # hyperparameter decay factor for decaying learning rate
 
     for e in range(epoch):
-
         model, ave_training_loss = o2_model_backprop(model, dict_data_loaders[type_loader], optimizer, criterion)
         epoch_count_correct, ave_validate_loss = o3_model_no_backprop(model, dict_data_loaders['valid_loader'], criterion)
 
