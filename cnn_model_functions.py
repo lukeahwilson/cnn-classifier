@@ -2,10 +2,9 @@
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
 # REVISED DATE: 2021-09-28
-# PURPOSE:
-#   - Provide utility functions for import into main
-#       o c1_download_pretrained_model for downloading desireable pretrained models to use
-#       o c2_create_classifier() for reassigning output layers to newly attached layers and creating initialized classifier
+# PURPOSE: Provide model functions for import into main
+#   - c1_download_pretrained_model for downloading desireable pretrained models to use
+#   - c2_create_classifier() for reassigning output layers to newly attached layers and creating initialized classifier
 ##
 
 # Import required libraries

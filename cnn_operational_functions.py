@@ -2,17 +2,17 @@
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
 # REVISED DATE: 2021-09-28
-# PURPOSE:
-#   - Provide utility functions for import into main
-#       o o1_load_data for loading data for training and classification
-#       o o2_map_labels for mapping labels on data against data indexes
-#       o o3_process_data for processing data into suitable conditions to be inputed into model
-#       o o4_attempt_overfitting for attempting to overfit a subset of the available data as an initial fitness test for the concept model
-#       o o5_train_model for training the model on the available training data
+# PURPOSE: Provide operational functions for import into main
+#   - o1_load_data for loading data for training and classification
+#   - o2_map_labels for mapping labels on data against data indexes
+#   - o3_process_data for processing data into suitable conditions to be inputed into model
+#   - o4_attempt_overfitting for attempting to overfit a subset of the available data as an initial fitness test for the concept model
+#   - o5_train_model for training the model on the available training data
 ##
 
 # Import required libraries
 import matplotlib.pyplot as plt
+import random
 import time
 import numpy as np
 import torch
@@ -178,13 +178,41 @@ def o5_plot_training_history(model_name, model_hyperparameters):
     plt.xlabel('Total Epoch ({})'.format(len(model_hyperparameters['training_loss_history'])))
     plt.legend(frameon=False)
 
-#
-# def o6_predict_data(image_path, model, topk=5):
-#     ''' Compute probabilities for various classes for an image using a trained deep learning model.
-#     '''
-#     model.eval()
-#     with torch.no_grad():
-#         input_image = get_image(image_path)
-#         prediction = torch.exp(model(input_image))
-#         probabilities, classes = prediction.topk(topk)
-#     return probabilities, classes
+
+def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, topk=5):
+    ''' Compute probabilities for various classes for an image using a trained deep learning model.
+    '''
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+    dict_prediction_results = {}
+    with torch.no_grad(): # turn off gradient tracking and calculation for computational efficiency
+        for image, filenames in data_loader:
+            image = image.to(device)
+            model_output = torch.exp(model(image))
+            probabilities, class_indexes = model_output.topk(5, dim=1)
+            # print(np.arange(len(filenames)))
+            for index in np.arange(len(filenames)):
+                # print(index)
+                class_prediction = [dict_data_labels[dict_class_labels[value]] for value in class_indexes.tolist()[index]]
+                dict_prediction_results[filenames[index]] = [class_prediction, probabilities.tolist()[index]]
+
+    return dict_prediction_results
+
+
+
+def o7_show_prediction(data_dir, dict_prediction_results):
+    ''' Process raw image for input to deep learning model
+    '''
+    example_prediction = random.choice(list(dict_prediction_results.keys()))
+
+    plt.imshow(Image.open(data_dir + 'predict/' + example_prediction)); # no need to process and inverse transform, our data is coming from the same path, I'll just open the original
+    plt.show(block=False)
+    plt.pause(2)
+    plt.close()
+    plt.bar(dict_prediction_results[example_prediction][0], dict_prediction_results[example_prediction][1])
+    plt.title(example_prediction)
+    plt.xticks(rotation=20);
+    plt.show(block=False)
+    plt.pause(5)
+    plt.close()

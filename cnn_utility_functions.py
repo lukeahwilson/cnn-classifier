@@ -2,13 +2,12 @@
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
 # REVISED DATE: 2021-09-28
-# PURPOSE:
-#   - Provide utility functions for import into main
-#       o o1_load_data for loading data for training and classification
-#       o o2_map_labels for mapping labels on data against data indexes
-#       o o3_process_data for processing data into suitable conditions to be inputed into model
-#       o o4_attempt_overfitting for attempting to overfit a subset of the available data as an initial fitness test for the concept model
-#       o o5_train_model for training the model on the available training data
+# PURPOSE: Provide utility functions for import into main
+#   - o1_load_data for loading data for training and classification
+#   - o2_map_labels for mapping labels on data against data indexes
+#   - o3_process_data for processing data into suitable conditions to be inputed into model
+#   - o4_attempt_overfitting for attempting to overfit a subset of the available data as an initial fitness test for the concept model
+#   - o5_train_model for training the model on the available training data
 ##
 
 # Import required libraries
@@ -69,11 +68,14 @@ def u2_load_processed_data(data_dir):
     for folder in os.listdir(data_dir):
         if os.path.splitext(folder)[1] == '' and folder != 'predict':
             dict_datasets[folder + '_data'] = datasets.ImageFolder(data_dir + folder, transform=u3_process_data(folder))
+        if os.path.splitext(folder)[1] == '' and folder == 'predict':
+            predict_transform = u3_process_data(folder)
+            dict_datasets['predict_data'] = [(predict_transform(Image.open(data_dir + folder + '/' + filename)), filename) for filename in os.listdir(data_dir + folder)]
         if os.path.splitext(folder)[1] == '.json':
             with open(data_dir + folder, 'r') as f:
-                data_labels_dic = json.load(f)
-                data_labels_dic = {value : key for (key, value) in data_labels_dic.items()}
-    return dict_datasets, data_labels_dic
+                dict_data_labels = json.load(f)
+    dict_class_labels = {value : key for (key, value) in dict_datasets['train_data'].class_to_idx.items()}
+    return dict_datasets, dict_data_labels, dict_class_labels
 
 
 def u3_process_data(transform_request):
@@ -125,6 +127,7 @@ def u4_data_iterator(dict_datasets):
     dict_data_loaders['valid_loader'] = torch.utils.data.DataLoader(dict_datasets['valid_data'], batch_size=64, shuffle=True)
     dict_data_loaders['testing_loader'] = torch.utils.data.DataLoader(dict_datasets['test_data'], batch_size=32, shuffle=True)
     dict_data_loaders['overfit_loader'] = torch.utils.data.DataLoader(dict_datasets['overfit_data'], batch_size=8, shuffle=True)
+    dict_data_loaders['predict_loader'] = torch.utils.data.DataLoader(dict_datasets['predict_data'], batch_size=2, shuffle=False)
 
     return dict_data_loaders
 
@@ -157,15 +160,3 @@ def u6_user_input_prompt(prompt, default=True):
         else:
             choice=choice
             print('Error, please use the character inputs \'Y\' and \'N\'')
-
-
-# def u7_get_image(image_path):
-#     ''' Process raw image for input to deep learning model
-#     '''
-#     image_open = Image.open(image_path) # access image at pathway, open the image and store it as a PIL image
-#     tensor_image = flower_transform(image_open) # transform PIL image and simultaneously convert image to a tensor (no need for .clone().detach())
-#     input_image = torch.unsqueeze(tensor_image, 0) # change image shape from a stand alone image tensor, to a list of image tensors with length = 1
-#     return input_image # return processed image
-
-
-# def u8_show_image():
