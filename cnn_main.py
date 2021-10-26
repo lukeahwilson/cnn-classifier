@@ -1,19 +1,22 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-09-28
+# REVISED DATE: 2021-10-26
 # PURPOSE: Train a model and use it to make predictions as required by the user
 #   - Retrieve command line arguments to dictate model type, training parameters, and data
-#   - Load an image dataset, process the image data, and convert it to a generator
-#   - Preprocess the dataset
-#   - Load a pre-trained network
-#   - Attach new fully connected layers to network
-#   - Train these layers against pretrained features
-#   - Save the hyperparameters, training history, and training state
-#   - Provide opportunity for retraining or predictions
-#   - Make predictions on newly provided data
-#   - Use argparse to parse user inputs when calling python script:
-#       o python convolutional-classifier.py --## <'string'> --## <'string'> --dir <directory>
+#   - Load image datasets, process the image data, and convert these into data generators
+#   - Create a default naming structure to save and load information at a specified directory
+#   - Download a pretrained model using input arguments and attach new fully connected output Layers
+#   - Define criterion for loss, if training is required by the input arg, execute the following:
+#       o Prompt user for overfit training, if yes, initiate training against pretrained features
+#       o Prompt user for complete training, if yes, initiate training against pretrained features
+#       o Save the hyperparameters, training history, and training state for the overfit and full models
+#   - if training is no requested by the input arg, execute the following:
+#       o Load in a pretrained model's state dict and it's model_hyperparameters
+#       o Display the training history for this model
+#   - Provide prompt to test the model and perform and display performance if requested
+#   - Provide prompt to apply the model towards inference and put model to work if requested
+#   - Show an example prediction from the inference
 ##
 
 # Import required libraries
@@ -45,9 +48,6 @@ def main():
     14. show predictions
     """
 
-    # Record start time
-    start_program_time = time.time()
-
     # Get arguments
     arg = u1_get_input_args()
 
@@ -57,9 +57,9 @@ def main():
 
     #Create file pathway for hyperparameter saving to JSON format later
     file_name_scheme = 'saved-models/' + os.path.basename(os.path.dirname(arg.dir)) + '_' + arg.model + '_' + str(arg.layer) + 'lay'
-    criterion = nn.NLLLoss()
 
     # Download a classifer model for use
+    criterion = nn.NLLLoss()
     model = m1_create_classifier(arg.model, arg.layer, len(dict_datasets['train_data'].classes))
 
     if arg.train == 'y':

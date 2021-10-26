@@ -1,10 +1,12 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-09-28
+# REVISED DATE: 2021-10-26
 # PURPOSE: Provide model functions for import into main
-#   - c1_download_pretrained_model for downloading desireable pretrained models to use
-#   - c2_create_classifier() for reassigning output layers to newly attached layers and creating initialized classifier
+#   - Classifier(nn.Module)
+#   - m1_create_classifier(model_name, hidden_layers, classes_length)
+#   - m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
+#   - m3_load_model_checkpoint(model, file_name_scheme)
 ##
 
 # Import required libraries

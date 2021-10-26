@@ -1,18 +1,19 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
-# DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-09-28
+# DATE CREATED: 2021-10-12
+# REVISED DATE: 2021-10-26
 # PURPOSE: Provide utility functions for import into main
-#   - o1_load_data for loading data for training and classification
-#   - o2_map_labels for mapping labels on data against data indexes
-#   - o3_process_data for processing data into suitable conditions to be inputed into model
-#   - o4_attempt_overfitting for attempting to overfit a subset of the available data as an initial fitness test for the concept model
-#   - o5_train_model for training the model on the available training data
+#   - u1_get_input_args()
+#   - u2_load_processed_data(data_dir)
+#   - u3_process_data(transform_request)
+#   - u4_data_iterator(dict_datasets)
+#   - u5_time_limited_input(prompt, default=True)
+#   - u6_user_input_prompt(prompt, default)
 ##
 
 # Import required libraries
 import json
-import argparse #import python argparse function
+import argparse
 import os, random
 import numpy as np
 import torch
@@ -75,6 +76,7 @@ def u2_load_processed_data(data_dir):
             with open(data_dir + folder, 'r') as f:
                 dict_data_labels = json.load(f)
     dict_class_labels = {value : key for (key, value) in dict_datasets['train_data'].class_to_idx.items()}
+
     return dict_datasets, dict_data_labels, dict_class_labels
 
 
@@ -132,18 +134,19 @@ def u4_data_iterator(dict_datasets):
     return dict_data_loaders
 
 
-def u5_time_limited_input(prompt):
+def u5_time_limited_input(prompt, default=True):
     TIMEOUT = 10
     prompt = prompt + f': \'y\' for yes, \'n\' for no ({TIMEOUT} seconds to choose): '
-    user_input_thread = Thread(target=u6_user_input_prompt, args=(prompt,), daemon = True)
+    user_input_thread = Thread(target=u6_user_input_prompt, args=(prompt, default), daemon = True)
     user_input_thread.start()
     user_input_thread.join(TIMEOUT)
     if not answered:
         print('\n No valid input, proceeding with operation...')
+
     return choice
 
 
-def u6_user_input_prompt(prompt, default=True):
+def u6_user_input_prompt(prompt, default):
     global choice, answered
     choice = default
     answered = False

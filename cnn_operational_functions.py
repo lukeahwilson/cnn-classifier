@@ -1,13 +1,15 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-09-28
+# REVISED DATE: 2021-10-26
 # PURPOSE: Provide operational functions for import into main
-#   - o1_load_data for loading data for training and classification
-#   - o2_map_labels for mapping labels on data against data indexes
-#   - o3_process_data for processing data into suitable conditions to be inputed into model
-#   - o4_attempt_overfitting for attempting to overfit a subset of the available data as an initial fitness test for the concept model
-#   - o5_train_model for training the model on the available training data
+#   - o1_train_model(model, dict_data_loaders, epoch, learnrate, type_loader, criterion)
+#   - o2_model_backprop(model, data_loader, optimizer, criterion)
+#   - o3_model_no_backprop(model, data_loader, criterion)
+#   - o4_control_model_grad(model, control=False)
+#   - o5_plot_training_history(model_name, model_hyperparameters)
+#   - o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, topk=5)
+#   - o7_show_prediction(data_dir, dict_prediction_results)
 ##
 
 # Import required libraries
