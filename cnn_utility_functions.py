@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-10-12
-# REVISED DATE: 2021-10-26
+# REVISED DATE: 2021-10-27
 # PURPOSE: Provide utility functions for import into main
 #   - u1_get_input_args()
 #   - u2_load_processed_data(data_dir)
@@ -25,26 +25,27 @@ from threading import Thread
 
 
 def u1_get_input_args():
-    """
+    '''
     Creates and stores command line arguments inputted by the user. Attaches default arguments and help text to aid user.
     Command Line Arguments:
-        1. Directory as --dir
-        2. CNN Model as --model
-        3. Data Name Dictionary as --names
-    This function returns these arguments as an ArgumentParser object.
-    Parameters:
-        - None
+        1. Data directory as --dir
+        2. Choose to load model as --load
+        3. Choose to train model as --train
+        4. Define number of training epochs as --epoch
+        5. Define network number of hidden layers --layer
+        6. Define learnrate as --learn
+        7. Choose pretrained CNN model as --model
     Returns:
         - Stored command line arguments as an Argument Parser Object with parse_args() data structure
-    """
+    '''
 
     parser = argparse.ArgumentParser(description = 'Classify input images and benchmark performance')
     parser.add_argument('--dir', type=str, default= os.path.expanduser('~')+'/Programming Data/Flower_data/', help='input path for data directory')
+    parser.add_argument('--load', type=str, default='n', help='yes \'y\' or no \'n\' to load state_dict for model', choices=['y','n'])
     parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
     parser.add_argument('--epoch', type=int, default=100, help='provide the number of epochs for training (default 100)')
     parser.add_argument('--layer', type=int, default=2, help='provide the number of hidden layers to use (default 2)')
     parser.add_argument('--learn', type=int, default=0.003, help='provide the learning rate to begin training (default 0.003)')
-    parser.add_argument('--label', type=str, default='', help='flower_to_name.json')
     parser.add_argument('--model', type=str, default='googlenet', help='select pretrained model',
                         choices=['vgg', 'alexnet', 'googlenet', 'densenet', 'resnext', 'shufflenet'])
 
@@ -52,18 +53,17 @@ def u1_get_input_args():
 
 
 def u2_load_processed_data(data_dir):
-    """
-    Receives a pathway to a folder containing training, .
-    Command Line Arguments:
-        1. Directory as --dir
-        2. CNN Model as --model
-        3. Data Name Dictionary as --names
-    This function returns these arguments as an ArgumentParser object.
+    '''
+    Purpose:
+        - Access data directory and produce a dictionary of datasets
+        - Create a dictionary of the class labels and read in the data labels
     Parameters:
-        - None
+        - data_dir = pathway to the data
     Returns:
-        - Stored command line arguments as an Argument Parser Object with parse_args() data structure
-    """
+        - dictionary of datasets
+        - dictionary of data labels
+        - dictionary of class labels
+    '''
 
     dict_datasets = {}
     for folder in os.listdir(data_dir):
@@ -81,6 +81,15 @@ def u2_load_processed_data(data_dir):
 
 
 def u3_process_data(transform_request):
+    '''
+    Purpose:
+        - Provide an assortment of transforms for application to specific datasets
+        - Return the appropriate transformation that corresponds to the inputted request
+    Parameters:
+        - transformation_request = selected transformation type
+    Returns:
+        - transform that corresponds to the request
+    '''
     #Define transforms for training, validation, overfitting, and test sets to convert to desirable tensors for processing
 
     #Define image size
@@ -122,19 +131,38 @@ def u3_process_data(transform_request):
 
 def u4_data_iterator(dict_datasets):
     '''
+    Purpose:
+        - Receive a dictionary of datasets
+        - Convert each dataset to a dataLoader
+        - Return a dictionary of dataloaders
+    Parameters:
+        - dict_datasets = dictionary of datasets
+    Returns:
+        - dict_data_loaders = dictionary of dataloaders
     # bug, requires every folder to run correctly. Consider removing this function and nesting it directly into training function!
     '''
     dict_data_loaders = {}
     dict_data_loaders['train_loader'] = torch.utils.data.DataLoader(dict_datasets['train_data'], batch_size=128, shuffle=True)
-    dict_data_loaders['valid_loader'] = torch.utils.data.DataLoader(dict_datasets['valid_data'], batch_size=64, shuffle=True)
-    dict_data_loaders['testing_loader'] = torch.utils.data.DataLoader(dict_datasets['test_data'], batch_size=32, shuffle=True)
+    dict_data_loaders['valid_loader'] = torch.utils.data.DataLoader(dict_datasets['valid_data'], batch_size=128, shuffle=True)
+    dict_data_loaders['testing_loader'] = torch.utils.data.DataLoader(dict_datasets['test_data'], batch_size=128, shuffle=True)
     dict_data_loaders['overfit_loader'] = torch.utils.data.DataLoader(dict_datasets['overfit_data'], batch_size=8, shuffle=True)
-    dict_data_loaders['predict_loader'] = torch.utils.data.DataLoader(dict_datasets['predict_data'], batch_size=2, shuffle=False)
+    dict_data_loaders['predict_loader'] = torch.utils.data.DataLoader(dict_datasets['predict_data'], batch_size=128, shuffle=False)
 
     return dict_data_loaders
 
 
 def u5_time_limited_input(prompt, default=True):
+    '''
+    Purpose:
+        - Receive text and start a thread to initiate a user input prompt with that text
+        - Track thread time and limit time to an established TIMEOUT limit
+        - Return user input or after the TIMEOUT limit is reached return the default choice
+    Parameters:
+        - prompt = specific question text for display
+        - default = default choice if no user input is provided
+    Returns:
+        - choice = the user input or the default
+    '''
     TIMEOUT = 10
     prompt = prompt + f': \'y\' for yes, \'n\' for no ({TIMEOUT} seconds to choose): '
     user_input_thread = Thread(target=u6_user_input_prompt, args=(prompt, default), daemon = True)
@@ -147,6 +175,17 @@ def u5_time_limited_input(prompt, default=True):
 
 
 def u6_user_input_prompt(prompt, default):
+    '''
+    Purpose:
+        - Receive a prompt and use it for user input prompting
+        - Once answered return True or False if input is yes or no
+        - Ask question again if the input is incorrect
+    Parameters:
+        - prompt = complete user input question text for display
+        - default = default choice if no user input is provided
+    Returns:
+        - choice = the user input or the default
+    '''
     global choice, answered
     choice = default
     answered = False

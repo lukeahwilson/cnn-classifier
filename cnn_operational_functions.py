@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-10-26
+# REVISED DATE: 2021-10-27
 # PURPOSE: Provide operational functions for import into main
 #   - o1_train_model(model, dict_data_loaders, epoch, learnrate, type_loader, criterion)
 #   - o2_model_backprop(model, data_loader, optimizer, criterion)
@@ -25,9 +25,22 @@ from PIL import Image
 
 
 def o1_train_model(model, dict_data_loaders, epoch, type_loader, model_hyperparameters, criterion):
-
+    '''
+    Purpose:
+        - Receive a model and start or continue training on it for e epochs
+    Parameters:
+        - model = inputted model (can be loaded with training history)
+        - dict_data_loaders = dictionary of data loaders for iterating
+        - epoch = number of epochs to train
+        - type_loader = desired type of training (overfit or train)
+        - model_hyperparameters = dictionary of model hyperparameter information
+        - criterion = the loss calculation method
+    Returns:
+        - model = model after e epochs of training
+        - model_hyperparameters = revised hyperparameters for model after training
+    '''
     print("Using GPU" if torch.cuda.is_available() else "WARNING")
-    t0 = time.time() # initialize start time for running training
+    t0 = time.time() - model_hyperparameters['training_time']*60 # initialize start time for running training
 
 
     # running_count = 0 # initialize running count in order to track number of epochs fine tuning deeper network
@@ -39,7 +52,7 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, model_hyperpara
 
     if type_loader == 'overfit_loader':
         decay = 0.9 # hyperparameter decay factor for decaying learning rate
-        epoch = 200 # hyperparameter number of epochs
+        epoch = 3 # hyperparameter number of epochs
 
     if type_loader == 'train_loader':
         decay = 0.6 # hyperparameter decay factor for decaying learning rate
@@ -79,12 +92,24 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, model_hyperpara
                     return model, model_hyperparameters
                 if e+1 == epoch:
                     print('\nModel failed to overfit images\n')
-    model_hyperparameters['training_time'] = time.time() - t0/60
+    model_hyperparameters['training_time'] = np.around((time.time() - t0)/60, decimals=1)
 
     return model, model_hyperparameters
 
 
 def o2_model_backprop(model, data_loader, optimizer, criterion):
+    '''
+    Purpose:
+        - Conduct backpropogation on a model for data from a dataloader
+    Parameters:
+        - model = inputted model
+        - data_loader = generator for data to provide model training
+        - optimizer = defined optimizer for backpropogation
+        - criterion = the loss calculation method
+    Returns:
+        - model = model after cycling through the data_loader (one epoch of training)
+        - ave_training_loss = averaged training loss per batch of data
+    '''
     # Check model can overfit the data when using a miniscule sample size, looking for high accuracy on a few images
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.cuda.empty_cache()
@@ -108,6 +133,18 @@ def o2_model_backprop(model, data_loader, optimizer, criterion):
 
 
 def o3_model_no_backprop(model, data_loader, criterion):
+    '''
+    Purpose:
+        - Use the model to conduct predictions using the model
+        - Return performance of the predictions across the data
+    Parameters:
+        - model = inputted model
+        - data_loader = generator for data to conduct predictions
+        - criterion = the loss calculation method
+    Returns:
+        - epoch_count_correct = number of correctly predicted data items
+        - ave_validate_loss = averaged criterion loss per batch of data
+    '''
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     epoch_valid_loss = 0 # initialize total validate loss for this epoch
@@ -132,6 +169,16 @@ def o3_model_no_backprop(model, data_loader, criterion):
 
 
 def o4_control_model_grad(model, control=False):
+    '''
+    Purpose:
+        - Input a model and control active gradients on parameters at various layer depths
+        - Print which layes have been controlled
+    Parameters:
+        - model = inputted model
+        - control = whether to activate or deativate gradients
+    Returns:
+        - model = edited model with controlled layers
+    '''
     network_depth = len(list(model.children()))
     param_freeze_depth = network_depth // 2
     controlled_layers = []
@@ -147,7 +194,20 @@ def o4_control_model_grad(model, control=False):
     return model
 
 
-def o5_plot_training_history(model_name, model_hyperparameters):
+def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme, train_type='loaded'):
+    '''
+    Purpose:
+        - Plot the training and validation loss history for the inputted model
+        - Plot lines indicating when layers were activated and deactivated if controlled
+        - Save the plot with the name according to the type of training, skip if a loaded version
+    Parameters:
+        - model_name = name of model, used for title on plot
+        - model_hyperparameters = contains the history for plotting
+        - file_name_scheme = directory and naming convention for loading
+        - train_type = offer control on saving
+    Returns:
+        - none
+    '''
     plt.clf()
     plt.plot(model_hyperparameters['training_loss_history'], label='Training Training Loss')
     plt.plot(model_hyperparameters['validate_loss_history'], label='Validate Training Loss')
@@ -172,10 +232,24 @@ def o5_plot_training_history(model_name, model_hyperparameters):
     plt.ylabel('Total Loss')
     plt.xlabel('Total Epoch ({})'.format(len(model_hyperparameters['training_loss_history'])))
     plt.legend(frameon=False)
+    if train_type != 'loaded':
+        plt.savefig(file_name_scheme + '_training_history_' + train_type)
+    plt.clf()
+    print('Saved ', train_type, 'training history to project directory')
 
 
 def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, topk=5):
-    ''' Compute probabilities for various classes for an image using a trained deep learning model.
+    '''
+    Purpose:
+        - Compute probabilities for various classes for an image using a model
+    Parameters:
+        - model = trained deep neural net for computation
+        - data_loader = generator for data items to be iterated through for parallel prediction
+        - dict_data_labels = dictionary containing the names of each class for the data indexes
+        - dict_class_labels = dictionary containing the class indexes for the data indexes
+        - topk = number of class outputs
+    Returns:
+        - dict_prediction_results = dictionary containing predictions and probabilities for data keys
     '''
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -195,9 +269,16 @@ def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, top
     return dict_prediction_results
 
 
-
 def o7_show_prediction(data_dir, dict_prediction_results):
-    ''' Process raw image for input to deep learning model
+    '''
+    Purpose:
+        - Randomly choose a piece of data from the predict folder
+        - Display the chosen data and display the class outputs and corresponding probabilities
+    Parameters:
+        - data_dir = pathway to the data directory containing the data of interest
+        - dict_prediction_results = dictionary of the prediction results on the dataset of interest
+    Returns:
+        - none
     '''
     example_prediction = random.choice(list(dict_prediction_results.keys()))
 

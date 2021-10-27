@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-10-26
+# REVISED DATE: 2021-10-27
 # PURPOSE: Provide model functions for import into main
 #   - Classifier(nn.Module)
 #   - m1_create_classifier(model_name, hidden_layers, classes_length)
@@ -28,6 +28,21 @@ model_name_dic = {'vgg': 'vgg16', 'alexnet': 'alexnet', 'googlenet': 'googlenet'
 
 #Create a Classifier class, inheriting from nn.Module and incorporating Relu, Dropout and log_softmax
 class Classifier(nn.Module):
+    '''
+    Inherits Class information from the nn.Module and creates a Classifier Class:
+        - Class has these attributes:
+            o fully connected layer with specified number of in_features and out_features
+            o number of hidden layers equivalent to the inputted requirements
+            o dropout parameter for the fully connected layers
+        - Class has a forward method:
+            o Flattens the input data in an input layer for computation
+            o Connects each layer with a relu activation, the defined dropout, and linear regression
+            o Returns outputs from the final hidden layer into an categorical output probability using log_softmax
+    Parameters:
+        - in_features
+        - hidden_layers
+        - out_features
+    '''
     def __init__(self, in_features, hidden_layers, out_features):
         super().__init__()
         self.in_features = in_features
@@ -53,6 +68,17 @@ class Classifier(nn.Module):
 
 
 def m1_create_classifier(model_name, hidden_layers, classes_length):
+    '''
+    Purpose:
+        - Create classifier functions
+        - Leverages the requested pretrained model to provide base features
+    Parameters:
+        - model_name = base pretrained model
+        - hidden_layers = number of hidden layers in final fully connected network
+        - out_features = number of classes in data
+    Returns:
+        - model
+    '''
 
     #Download a pretrained convolutional neural network to reference, choose only the model requested by the user
     model = getattr(models, model_name_dic[model_name])(pretrained=True)
@@ -80,6 +106,16 @@ def m1_create_classifier(model_name, hidden_layers, classes_length):
 
 
 def m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters):
+    '''
+    Purpose:
+        - Save model checkpoint and hyperparameters
+    Parameters:
+        - model = model to be saved
+        - file_name_scheme = directory and naming convention for saving
+        - model_hyperparameters = information about state of model
+    Returns:
+        - none
+    '''
     #Save the model state_dict
     torch.save(model.state_dict(), file_name_scheme + '_dict.pth')
 
@@ -89,6 +125,16 @@ def m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters):
 
 
 def m3_load_model_checkpoint(model, file_name_scheme):
+    '''
+    Purpose:
+        - Load model checkpoint and hyperparameters
+    Parameters:
+        - model = model to be loaded
+        - file_name_scheme = directory and naming convention for loading
+    Returns:
+        - model
+        - model hyperparameters
+    '''
     # Option to reload from previous state
     checkpoint = torch.load(file_name_scheme + '_dict.pth')
     model.load_state_dict(checkpoint)
