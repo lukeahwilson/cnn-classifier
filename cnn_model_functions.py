@@ -82,7 +82,6 @@ def m1_create_classifier(model_name, hidden_layers, classes_length):
 def m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters):
     #Save the model state_dict
     torch.save(model.state_dict(), file_name_scheme + '_dict.pth')
-    getattr(model, list(model._modules.items())[-1][0]).state_dict().keys()
 
     #Create a JSON file containing the saved information above
     with open(file_name_scheme + '_hyperparameters.json', 'w') as file:

@@ -48,6 +48,8 @@ def main():
     14. show predictions
     """
 
+
+
     # Get arguments
     arg = u1_get_input_args()
 
@@ -59,8 +61,18 @@ def main():
     file_name_scheme = 'saved-models/' + os.path.basename(os.path.dirname(arg.dir)) + '_' + arg.model + '_' + str(arg.layer) + 'lay'
 
     # Download a classifer model for use
-    criterion = nn.NLLLoss()
     model = m1_create_classifier(arg.model, arg.layer, len(dict_datasets['train_data'].classes))
+    criterion = nn.NLLLoss()
+    
+    # Define default hyperparameters: learning rate and weight decay
+    model_hyperparameters = {'learnrate': arg.learn,
+                         'training_loss_history': [],
+                         'validate_loss_history': [],
+                         'epoch_on': [],
+                         'running_count': 0,
+                         'weightdecay' : 0.00001,
+                         'training_time' : 0}
+
 
     if arg.train == 'y':
         print('Displaying an example processed image from the training set..\n')
@@ -70,13 +82,13 @@ def main():
         plt.close()
 
         if u5_time_limited_input('Check model can overfit small dataset?'):
-            overfit_model, model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch, arg.learn, 'overfit_loader', criterion)
-            o5_plot_training_history(arg.model, model_hyperparameters)
+            overfit_model, overfit_model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', model_hyperparameters, criterion)
+            o5_plot_training_history(arg.model, overfit_model_hyperparameters)
             plt.savefig(file_name_scheme + '_training_history_overfit.png')
             print('Saved overfit training history to project directory')
 
         if u5_time_limited_input('Continue with complete model training?'):
-            model, model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch, arg.learn, 'train_loader', criterion)
+            model, model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch, 'train_loader', model_hyperparameters, criterion)
             o5_plot_training_history(arg.model, model_hyperparameters)
             plt.savefig(file_name_scheme + '_training_history_complete.png')
             print('Saved complete training history to project directory')

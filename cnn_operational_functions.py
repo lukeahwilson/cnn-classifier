@@ -24,22 +24,14 @@ from torch import nn, optim
 from PIL import Image
 
 
-def o1_train_model(model, dict_data_loaders, epoch, learnrate, type_loader, criterion):
+def o1_train_model(model, dict_data_loaders, epoch, type_loader, model_hyperparameters, criterion):
 
     print("Using GPU" if torch.cuda.is_available() else "WARNING")
     t0 = time.time() # initialize start time for running training
 
-    running_count = 0 # initialize running count in order to track number of epochs fine tuning deeper network
+
+    # running_count = 0 # initialize running count in order to track number of epochs fine tuning deeper network
     running = False # initialize running variable to start system with deeper network frozen
-
-    # Define default hyperparameters: learning rate and weight decay
-    model_hyperparameters = {'learnrate': learnrate,
-                         'training_loss_history': [],
-                         'validate_loss_history': [],
-                         'epoch_on': [],
-                         'running_count': 0,
-                         'weightdecay' : 0.00001}
-
     startlearn = model_hyperparameters['learnrate']
 
     # Only train the replaced fully connected classifier parameters, feature parameters are frozen
@@ -87,6 +79,7 @@ def o1_train_model(model, dict_data_loaders, epoch, learnrate, type_loader, crit
                     return model, model_hyperparameters
                 if e+1 == epoch:
                     print('\nModel failed to overfit images\n')
+    model_hyperparameters['training_time'] = time.time() - t0/60
 
     return model, model_hyperparameters
 
