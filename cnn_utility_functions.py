@@ -71,7 +71,9 @@ def u2_load_processed_data(data_dir):
             dict_datasets[folder + '_data'] = datasets.ImageFolder(data_dir + folder, transform=u3_process_data(folder))
         if os.path.splitext(folder)[1] == '' and folder == 'predict':
             predict_transform = u3_process_data(folder)
-            dict_datasets['predict_data'] = [(predict_transform(Image.open(data_dir + folder + '/' + filename)), filename) for filename in os.listdir(data_dir + folder)]
+            dict_datasets['predict_data'] = \
+                            [(predict_transform(Image.open(data_dir + folder + '/' + filename)), filename)\
+                            for filename in os.listdir(data_dir + folder)]
         if os.path.splitext(folder)[1] == '.json':
             with open(data_dir + folder, 'r') as f:
                 dict_data_labels = json.load(f)

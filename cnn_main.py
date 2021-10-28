@@ -59,7 +59,8 @@ def main():
     dict_data_loaders = u4_data_iterator(dict_datasets)
 
     #Create file pathway for hyperparameter saving to JSON format later
-    file_name_scheme = 'saved-models/' + os.path.basename(os.path.dirname(arg.dir)) + '_' + arg.model + '_' + str(arg.layer) + 'lay'
+    file_name_scheme = 'saved-models/' + os.path.basename(os.path.dirname(arg.dir))\
+                    + '_' + arg.model + '_' + str(arg.layer) + 'lay'
 
     # Download a classifer model for use
     model = m1_create_classifier(arg.model, arg.layer, len(dict_datasets['train_data'].classes))
@@ -88,32 +89,35 @@ def main():
         plt.pause(2)
         plt.close()
 
-        if arg.load == 'n':
-            if u5_time_limited_input('Check model can overfit small dataset?'):
-                overfit_model, overfit_model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch, 'overfit_loader', model_hyperparameters, criterion)
-                o5_plot_training_history(arg.model, overfit_model_hyperparameters, file_name_scheme, 'overfit')
-
         if u5_time_limited_input('Continue with model training?'):
-            model, model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch, 'train_loader', model_hyperparameters, criterion)
+            model, model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch,
+                    'train_loader', model_hyperparameters, criterion)
             o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme, 'complete')
             #Save the model hyperparameters and the locations in which the CNN training activated and deactivated
             if u5_time_limited_input('Would you like to save the model?'):
                 m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
 
+    if arg.train == 'n' and arg.load == 'n':
+        if u5_time_limited_input('Check model can overfit small dataset?'):
+            overfit_model, overfit_model_hyperparameters = o1_train_model(model, dict_data_loaders,
+                            arg.epoch, 'overfit_loader', model_hyperparameters, criterion)
+            o5_plot_training_history(arg.model, overfit_model_hyperparameters, file_name_scheme, 'overfit')
+
     if arg.train == 'y' or arg.load == 'y':
         print('The model is ready to provide predictions')
 
-    if u5_time_limited_input('Would you like to test the model?'):
-        t1 = time.time()
-        test_count_correct, ave_test_loss = o3_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
-        print('testing Loss: {:.3f}.. '.format(ave_test_loss),
-            'testing Accuracy: {:.3f}'.format(test_count_correct / len(dict_data_loaders['testing_loader'].dataset)),
-            'Runtime - {:.0f} seconds'.format((time.time() - t1)))
+        if u5_time_limited_input('Would you like to test the model?'):
+            t1 = time.time()
+            test_count_correct, ave_test_loss = o3_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
+            print('testing Loss: {:.3f}.. '.format(ave_test_loss),
+                'testing Accuracy: {:.3f}'.format(test_count_correct / len(dict_data_loaders['testing_loader'].dataset)),
+                'Runtime - {:.0f} seconds'.format((time.time() - t1)))
 
-    if u5_time_limited_input('Would you like to use the model for inference?'):
-        dict_prediction_results = o6_predict_data(model, dict_data_loaders['predict_loader'], dict_data_labels, dict_class_labels)
+        if u5_time_limited_input('Would you like to use the model for inference?'):
+            dict_prediction_results = o6_predict_data(model, dict_data_loaders['predict_loader'],
+                            dict_data_labels, dict_class_labels)
 
-    o7_show_prediction(arg.dir, dict_prediction_results)
+        o7_show_prediction(arg.dir, dict_prediction_results)
 
 
 if __name__ == "__main__":

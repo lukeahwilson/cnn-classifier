@@ -39,7 +39,8 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, model_hyperpara
         - model = model after e epochs of training
         - model_hyperparameters = revised hyperparameters for model after training
     '''
-    print("Using GPU" if torch.cuda.is_available() else "WARNING")
+
+    print('Using GPU =', torch.cuda.get_device_name() if torch.cuda.is_available() else "WARNING GPU UNAVAILABLE")
     t0 = time.time() - model_hyperparameters['training_time']*60 # initialize start time for running training
 
 
@@ -48,11 +49,12 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, model_hyperpara
     startlearn = model_hyperparameters['learnrate']
 
     # Only train the replaced fully connected classifier parameters, feature parameters are frozen
-    optimizer = optim.Adam(getattr(model, list(model._modules.items())[-1][0]).parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay'])
+    optimizer = optim.Adam(getattr(model, list(model._modules.items())[-1][0]).parameters(),
+                    lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay'])
 
     if type_loader == 'overfit_loader':
         decay = 0.9 # hyperparameter decay factor for decaying learning rate
-        epoch = 3 # hyperparameter number of epochs
+        epoch = 200 # hyperparameter number of epochs
 
     if type_loader == 'train_loader':
         decay = 0.6 # hyperparameter decay factor for decaying learning rate
@@ -72,12 +74,16 @@ def o1_train_model(model, dict_data_loaders, epoch, type_loader, model_hyperpara
 
         training_loss_history = model_hyperparameters['training_loss_history']
         if len(training_loss_history) > 3: # hold loop until training_loss_history has enough elements to satisfy search requirements
-            if -3*model_hyperparameters['learnrate']*decay*decay*training_loss_history[0] > np.mean([training_loss_history[-2]-training_loss_history[-1], training_loss_history[-3]-training_loss_history[-2]]):
+            if -3*model_hyperparameters['learnrate']*decay*decay*training_loss_history[0]\
+                            > np.mean([training_loss_history[-2]-training_loss_history[-1],
+                            training_loss_history[-3]-training_loss_history[-2]]):
                 # if the average of the last 2 training loss slopes is less than the original loss factored down by the learnrate, the decay, and a factor of 3, then decay the learnrate
                 model_hyperparameters['learnrate'] *= decay # multiply learnrate by the decay hyperparameter
-                optimizer = optim.Adam(getattr(model, list(model._modules.items())[-1][0]).parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay']) # revise the optimizer to use the new learnrate
+                optimizer = optim.Adam(getattr(model, list(model._modules.items())[-1][0]).parameters(),
+                                lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay']) # revise the optimizer to use the new learnrate
                 print('Learnrate changed to: {:f}'.format(model_hyperparameters['learnrate']))
-            if model_hyperparameters['learnrate'] <= startlearn*decay**(9*(decay**3)) and model_hyperparameters['running_count'] == 0: # super messy, I wanted a general expression that chose when to activate the deeper network and this worked
+            if model_hyperparameters['learnrate'] <= startlearn*decay**(9*(decay**3))\
+                            and model_hyperparameters['running_count'] == 0: # super messy, I wanted a general expression that chose when to activate the deeper network and this worked
                 model = o4_control_model_grad(model, True)
                 model_hyperparameters['epoch_on'] = e
                 running = True # change the running parameter to True so that the future loop can start counting epochs that have run
@@ -235,7 +241,7 @@ def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme
     if train_type != 'loaded':
         plt.savefig(file_name_scheme + '_training_history_' + train_type)
     plt.clf()
-    print('Saved ', train_type, 'training history to project directory')
+    print('Saved', train_type, 'training history to project directory')
 
 
 def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, topk=5):

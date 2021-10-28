@@ -50,9 +50,11 @@ class Classifier(nn.Module):
         self.out_features = out_features
         self._index = 1
         while self._index < self.hidden_layers:
-            setattr(self, 'fc'+str(self._index), nn.Linear(round(self.in_features/(2**(self._index-1))), round(self.in_features/(2**self._index))))
+            setattr(self, 'fc'+str(self._index), nn.Linear(round(self.in_features/(2**(self._index-1))),
+                            round(self.in_features/(2**self._index))))
             self._index += 1
-        setattr(self, 'fc'+str(self._index), nn.Linear(round(self.in_features/(2**(self._index-1))), self.out_features))
+        setattr(self, 'fc'+str(self._index), nn.Linear(round(self.in_features/(2**(self._index-1))),
+                        self.out_features))
         self.dropout = nn.Dropout(p=0.3)
 
     def forward(self, x):
@@ -100,7 +102,8 @@ def m1_create_classifier(model_name, hidden_layers, classes_length):
 
     #Replace the fully connected layer(s) at the end of the model with our own fully connected classifier
     setattr(model, list(model._modules.items())[-1][0], Classifier(in_features, hidden_layers, out_features))
-    print('\nUsing ', model_name, ' with the following attached ', hidden_layers, ' layer classifier:\n', list(model.children())[-1])
+    print('\nUsing ', model_name, ' with the following attached ', hidden_layers,
+                    ' layer classifier:\n', list(model.children())[-1])
 
     return model
 
