@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-10-27
+# REVISED DATE: 2021-01-01
 # PURPOSE:
 #   - Leverage pretrained vision models for training and application on classifying flowers by name
 # REQUIREMENTS:
@@ -15,19 +15,21 @@
 #   - Predictions are made using paralleled batches and are saved in a results dictionary
 # HOW TO USE:
 #   - If no model has been trained and saved, start by training a model
-#   - For training, data in 'train' and 'valid' folders are required in the data_dir
-#   - For overfit testing, data in an 'overfit' folder is required in the data_dir
-#   - For performance testing, data in a 'test' folder is required in the data_dir
+#   - Store data in folders at this location: os.path.expanduser('~') + '/Programming Data/'
+#   - For training, 'train' and 'valid' folders with data are required in the data_dir
+#   - For overfit testing, an 'overfit' folder with data is required in the data_dir
+#   - For performance testing, a 'test' folder with data is required in the data_dir
 #   - For inference, put data of interest in a 'predict' folder in the data_dir
+#   - For saving and loading models, create a 'models' folder in the data_dir
 ##
 
-# Import required libraries
+# Import libraries
 import time, os, random
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 
-# Import handmade library of functions for use in main
+# Import handmade machine learning functions for use in main
 from cnn_model_functions import *
 from cnn_utility_functions import *
 from cnn_operational_functions  import *
@@ -50,23 +52,26 @@ def main():
     # Provide prompt to apply the model towards inference and put model to work if requested
     # Show an example prediction from the inference
     '''
-
-    # Get arguments
+    # Call ArgumentParser for user arguments and store in arg
     arg = u1_get_input_args()
+    data_dir = os.path.expanduser('~') + '/Programming Data/' + arg.dir
 
-    # Get processed data
-    dict_datasets, dict_data_labels, dict_class_labels = u2_load_processed_data(arg.dir)
+    # Call data processor to return a dictionary of datasets, the data labels, and the class labels
+    dict_datasets, dict_data_labels, dict_class_labels = u2_load_processed_data(data_dir)
+
+    # Call data iterator to convert dictionary of datasets to dictionary of dataloaders
     dict_data_loaders = u4_data_iterator(dict_datasets)
 
-    #Create file pathway for hyperparameter saving to JSON format later
-    file_name_scheme = 'saved-models/' + os.path.basename(os.path.dirname(arg.dir))\
+    #Create file pathway and naming convention saving and loading files in program
+    file_name_scheme =  data_dir + 'models/' + os.path.basename(os.path.dirname(data_dir))\
                     + '_' + arg.model + '_' + str(arg.layer) + 'lay'
-
-    # Download a classifer model for use
+    print(file_name_scheme)
+    # Call create classifier to return a model leveraging a desired pretrained architecture, define loss criterion
     model = m1_create_classifier(arg.model, arg.layer, len(dict_datasets['train_data'].classes))
     criterion = nn.NLLLoss()
 
-    # Define default hyperparameters: learning rate and weight decay
+    # Define start condition hyperparameters and key running information such as elapsed training time
+    # epoch_on and running_count refer to the epoch in which deeper layers started training and for how long
     model_hyperparameters = {'learnrate': arg.learn,
                          'training_loss_history': [],
                          'validate_loss_history': [],
@@ -75,49 +80,60 @@ def main():
                          'weightdecay' : 0.00001,
                          'training_time' : 0}
 
+    # If user requests load, call load checkpoint to return model and hyperparameters, then plot loaded information
     if arg.load == 'y':
         model, model_hyperparameters = m3_load_model_checkpoint(model, file_name_scheme)
         o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme)
-        plt.show(block=False)
-        plt.pause(3)
-        plt.close()
 
+    # If user requests train, first display an example piece of data from the processed training set
     if arg.train == 'y':
+        # NOTE 1: Processed data is tensor shape [xpixel, ypixel, colour], matplotlib takes order [c, x, y], so we transpose
+        # NOTE 2: Plotted images blocks function continuation, unblock requires pause to load image or image will freeze
         print('Displaying an example processed image from the training set..\n')
-        plt.imshow(random.choice(dict_datasets['train_data'])[0].numpy().transpose((1, 2, 0)))
-        plt.show(block=False)
+        plt.imshow(random.choice(dict_datasets['train_data'])[0].numpy().transpose((1, 2, 0))) # NOTE: 1
+        plt.show(block=False) # NOTE: 2
         plt.pause(2)
         plt.close()
 
-        if u5_time_limited_input('Continue with model training?'):
-            model, model_hyperparameters = o1_train_model(model, dict_data_loaders, arg.epoch,
-                    'train_loader', model_hyperparameters, criterion)
-            o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme, 'complete')
-            #Save the model hyperparameters and the locations in which the CNN training activated and deactivated
-            if u5_time_limited_input('Would you like to save the model?'):
-                m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
+        # Call train model with model and training dataset to return trained model and hyperparameters, then plot and save
+        model, model_hyperparameters = o1_train_model(model, dict_data_loaders['train_loader'],
+                        dict_data_loaders['valid_loader'], arg.epoch, 0.6, model_hyperparameters, criterion)
+        o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme, 'complete')
 
+        # Prompt user to save, save the model and its hyperparameters per the naming convention
+        if u5_time_limited_input('Would you like to save the model?'):
+            m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters)
+
+    # If user requests no load and no train, prompt to run an overfit training exercise and execute if requested
+    # NOTE: Same as training but on an overfit dataset. overfit_model metadata references the same data as the model metadata
     if arg.train == 'n' and arg.load == 'n':
         if u5_time_limited_input('Check model can overfit small dataset?'):
-            overfit_model, overfit_model_hyperparameters = o1_train_model(model, dict_data_loaders,
-                            arg.epoch, 'overfit_loader', model_hyperparameters, criterion)
+            overfit_model, overfit_model_hyperparameters = o1_train_model(model, dict_data_loaders['overfit_loader'],
+                            dict_data_loaders['valid_loader'], arg.epoch, 0.9, model_hyperparameters, criterion)
             o5_plot_training_history(arg.model, overfit_model_hyperparameters, file_name_scheme, 'overfit')
 
+    # If user requests load, or has requested training and training has completed, the model is ready for predictions
     if arg.train == 'y' or arg.load == 'y':
-        print('The model is ready to provide predictions')
+        print('The model is ready to provide predictions\n')
 
+        # Prompt to test the model's performance
+        # Gives the testing data loader to the validation function and returns performance
         if u5_time_limited_input('Would you like to test the model?'):
-            t1 = time.time()
-            test_count_correct, ave_test_loss = o3_model_no_backprop(model, dict_data_loaders['testing_loader'], criterion)
-            print('testing Loss: {:.3f}.. '.format(ave_test_loss),
-                'testing Accuracy: {:.3f}'.format(test_count_correct / len(dict_data_loaders['testing_loader'].dataset)),
-                'Runtime - {:.0f} seconds'.format((time.time() - t1)))
+            t0 = time.time()
+            test_count_correct, ave_test_loss = o3_model_no_backprop(model, dict_data_loaders['test_loader'], criterion)
+            print('\nTesting Loss: {:.3f}.. '.format(ave_test_loss),
+                'Testing Accuracy: {:.3f}'.format(test_count_correct / len(dict_data_loaders['test_loader'].dataset)),
+                'Runtime - {:.0f} seconds\n'.format((time.time() - t0)))
 
+        # Prompt the user to use the model for inference
+        # Gives an unlabeled dataloader to a predict function and returns predictions
         if u5_time_limited_input('Would you like to use the model for inference?'):
+            t1 = time.time()
             dict_prediction_results = o6_predict_data(model, dict_data_loaders['predict_loader'],
                             dict_data_labels, dict_class_labels)
-
-        o7_show_prediction(arg.dir, dict_prediction_results)
+            o7_show_prediction(data_dir, dict_prediction_results)
+            print('Runtime - {:.0f} seconds\n'.format((time.time() - t1)),
+                            [dict_prediction_results[key][0][0] for key in dict_prediction_results])
 
 
 if __name__ == "__main__":

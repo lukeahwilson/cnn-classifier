@@ -1,1 +1,0 @@
-{"learnrate": 0.003, "training_loss_history": [8.424076227041391, 2.7605500633899984, 3.845821167414005], "validate_loss_history": [2.1682144744055614, 2.5564652340752736, 3.0221395322254727], "epoch_on": [], "running_count": 0, "weightdecay": 1e-05, "training_time": 5.7}
