@@ -9,7 +9,7 @@
 #   - m3_load_model_checkpoint(model, file_name_scheme)
 ##
 
-# Import required libraries
+# Import libraries
 import json
 import time, os, random
 import numpy as np
@@ -21,12 +21,6 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 
-# Store a dictionary of available models as names to avoid downloading models until a choice has been made
-model_name_dic = {'vgg': 'vgg16', 'alexnet': 'alexnet', 'googlenet': 'googlenet', 'densenet': 'densenet161',
-                  'resnext': 'resnext50_32x4d', 'shufflenet': 'shufflenet_v2_x1_0'}
-
-
-#Create a Classifier class, inheriting from nn.Module and incorporating Relu, Dropout and log_softmax
 class Classifier(nn.Module):
     '''
     Inherits Class information from the nn.Module and creates a Classifier Class:
@@ -43,28 +37,34 @@ class Classifier(nn.Module):
         - hidden_layers
         - out_features
     '''
+    # Initialize attributes, requiring input arguments for the number of hidden layers, and input and output features
+    # Use super() for multiple inheritance from nn.Module, use arguments to create in, out, hidden layer attributes
     def __init__(self, in_features, hidden_layers, out_features):
         super().__init__()
         self.in_features = in_features
         self.hidden_layers = hidden_layers
         self.out_features = out_features
         self._index = 1
+
+        # Iterate to create the requested number of hidden layers, tapering down shape by a factor of 2 between layers
+        # Setattr is used to create a layer attribute with the fc('index') name and the factored shape
+        # Use the required number of out features for the output of the last layer, set dropout to a desired value
         while self._index < self.hidden_layers:
             setattr(self, 'fc'+str(self._index), nn.Linear(round(self.in_features/(2**(self._index-1))),
                             round(self.in_features/(2**self._index))))
             self._index += 1
-        setattr(self, 'fc'+str(self._index), nn.Linear(round(self.in_features/(2**(self._index-1))),
-                        self.out_features))
+        setattr(self, 'fc'+str(self._index), nn.Linear(round(self.in_features/(2**(self._index-1))), self.out_features))
         self.dropout = nn.Dropout(p=0.3)
 
+    # Define the forward function that will take an input and compute it through the number of layers
+    # Start by flattening the data, then use the number of hidden layers to iterate through each existing layer
+    # Use the Relu activation function between layers, apply the defined dropout rate, and return the softmax probability
     def forward(self, x):
         x = x.view(x.shape[0], -1)
-
         self._index = 1
         while self._index < self.hidden_layers:
             x = self.dropout(F.relu(getattr(self,'fc'+str(self._index))(x)))
             self._index += 1
-
         x = F.log_softmax(getattr(self,'fc'+str(self._index))(x), dim=1)
         return x
 
@@ -72,7 +72,9 @@ class Classifier(nn.Module):
 def m1_create_classifier(model_name, hidden_layers, classes_length):
     '''
     Purpose:
-        - Create classifier functions
+        - Return an integrated CNN architecture by:
+            o downloading a pretrained model
+            o attaching a fully connected network
         - Leverages the requested pretrained model to provide base features
     Parameters:
         - model_name = base pretrained model
@@ -81,36 +83,35 @@ def m1_create_classifier(model_name, hidden_layers, classes_length):
     Returns:
         - model
     '''
+    # Store a dictionary of available models as names to avoid downloading models until a choice has been made
+    model_name_dic = {'vgg': 'vgg16', 'alexnet': 'alexnet', 'googlenet': 'googlenet', 'densenet': 'densenet161',
+                      'resnext': 'resnext50_32x4d', 'shufflenet': 'shufflenet_v2_x1_0'}
 
-    #Download a pretrained convolutional neural network to reference, choose only the model requested by the user
+    # Download the pretrained convolutional neural network architecture requested by the user and freeze the parameters
     model = getattr(models, model_name_dic[model_name])(pretrained=True)
+    for param in model.parameters():
+        param.requires_grad = False
 
-    # Ensure that the in and out features for our model seamlessly match the in from the pretrained CNN and the out for the classes
-    # Rename the pretrained output layer to a default name 'new_output'
-    # pretrained_output_name = list(model._modules.items())[-1][0]
-    # model._modules['new_output'] = model._modules.pop(pretrained_output_name)
-    out_features = classes_length
-
+    # Search the pretrained architecture for the first fully-connected layer and return the number of in features
     for module in list(model.modules()):
         if module._get_name() == 'Linear':
             in_features = module.weight.shape[1]
             break
 
-    #Freeze parameters so we don't backprop through them
-    for param in model.parameters():
-        param.requires_grad = False
+    # Use the known number of in and out features to ensure compatibility for the attached fully connected layers
+    # Replace the fully connected layer(s) at the end of the model with our own fully connected classifier
+    setattr(model, list(model._modules.items())[-1][0], Classifier(in_features, hidden_layers, classes_length))
 
-    #Replace the fully connected layer(s) at the end of the model with our own fully connected classifier
-    setattr(model, list(model._modules.items())[-1][0], Classifier(in_features, hidden_layers, out_features))
+    # Print the name of the model and the architecture of the attached layers, then return the model
     print('\nUsing ', model_name, ' with the following attached ', hidden_layers,
                     ' layer classifier:\n', list(model.children())[-1])
-
     return model
 
 
 def m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters):
     '''
     Purpose:
+        - Receive a model, a naming convention, and model hyperparameter
         - Save model checkpoint and hyperparameters
     Parameters:
         - model = model to be saved
@@ -119,10 +120,10 @@ def m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters):
     Returns:
         - none
     '''
-    #Save the model state_dict
+    # Save the model state_dict per the naming convention as a pth file
     torch.save(model.state_dict(), file_name_scheme + '_dict.pth')
 
-    #Create a JSON file containing the saved information above
+    # Save the model hyperparameters per the naming convention as a JSON file
     with open(file_name_scheme + '_hyperparameters.json', 'w') as file:
         json.dump(model_hyperparameters, file)
 
@@ -130,6 +131,7 @@ def m2_save_model_checkpoint(model, file_name_scheme, model_hyperparameters):
 def m3_load_model_checkpoint(model, file_name_scheme):
     '''
     Purpose:
+        - Receive a model, a naming convention, and model hyperparameters
         - Load model checkpoint and hyperparameters
     Parameters:
         - model = model to be loaded
@@ -138,13 +140,13 @@ def m3_load_model_checkpoint(model, file_name_scheme):
         - model
         - model hyperparameters
     '''
-    # Option to reload from previous state
+    # Load the model state_dict by using the naming convention to find the file
     checkpoint = torch.load(file_name_scheme + '_dict.pth')
     model.load_state_dict(checkpoint)
 
+    # Load the model hyperparameters by using the naming convention and display the learnrate and train time
     with open(file_name_scheme + '_hyperparameters.json', 'r') as file:
         model_hyperparameters = json.load(file)
-
-    print('loaded model learnrate = ', model_hyperparameters['learnrate'])
-
+    print('loaded model learnrate = {:.2e}..'.format( model_hyperparameters['learnrate']),
+          'loaded model training time = {:.0f} min'.format( model_hyperparameters['training_time']))
     return model, model_hyperparameters
