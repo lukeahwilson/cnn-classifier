@@ -41,7 +41,7 @@ def u1_get_input_args():
         - Stored command line arguments as an Argument Parser Object with parse_args() data structure
     '''
     parser = argparse.ArgumentParser(description = 'Classify input images and benchmark performance')
-    parser.add_argument('--dir', type=str, default= 'Flower_data/', help='input path for data directory')
+    parser.add_argument('--dir', type=str, default= 'Flower_data', help='input path for data directory')
     parser.add_argument('--load', type=str, default='n', help='yes \'y\' or no \'n\' to load state_dict for model', choices=['y','n'])
     parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
     parser.add_argument('--epoch', type=int, default=50, help='provide the number of epochs for training (default 100)')

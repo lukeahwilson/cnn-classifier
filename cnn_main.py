@@ -3,11 +3,11 @@
 # DATE CREATED: 2021-09-27
 # REVISED DATE: 2021-01-01
 # PURPOSE:
-#   - Leverage pretrained vision models for training and application on classifying flowers by name
+#   - API to train and apply leveraged pretrained vision models for classification
 # REQUIREMENTS:
-#   - Pretained model is downloaded and can be trained for this flower application by user
+#   - Pretained model is downloaded and can be trained on a dataset by user
 #   - The number of attached fully connected layers is customizable by the user
-#   - The later portion of the network is unfrozen for a period of time during training for tuning
+#   - The deeper convolutional layers are unfrozen for a period of time during training for tuning
 #   - User can load a model and continue training or move directly to inference
 #   - Saved trained model information is stored in a specific folder with a useful naming convention
 #   - There are time-limited prompts that allow the user to direct processes as needed
@@ -54,7 +54,7 @@ def main():
     '''
     # Call ArgumentParser for user arguments and store in arg
     arg = u1_get_input_args()
-    data_dir = os.path.expanduser('~') + '/Programming Data/' + arg.dir
+    data_dir = os.path.expanduser('~') + '/Programming Data/' + arg.dir + '/'
 
     # Call data processor to return a dictionary of datasets, the data labels, and the class labels
     dict_datasets, dict_data_labels, dict_class_labels = u2_load_processed_data(data_dir)
