@@ -12,10 +12,9 @@
 #   - o7_show_prediction(data_dir, dict_prediction_results)
 ##
 
-# Import required libraries
+# Import libraries
 import matplotlib.pyplot as plt
-import random
-import time
+import time, os, random
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -24,82 +23,95 @@ from torch import nn, optim
 from PIL import Image
 
 
-def o1_train_model(model, dict_data_loaders, epoch, type_loader, model_hyperparameters, criterion):
+def o1_train_model(model, train_loader, valid_loader, epoch, decay, model_hyperparameters, criterion):
     '''
     Purpose:
         - Receive a model and start or continue training on it for e epochs
     Parameters:
         - model = inputted model (can be loaded with training history)
-        - dict_data_loaders = dictionary of data loaders for iterating
+        - train_loader = data loader for training data for iterating
+        - valid_loader = data loader for validation data for iterating
         - epoch = number of epochs to train
-        - type_loader = desired type of training (overfit or train)
         - model_hyperparameters = dictionary of model hyperparameter information
         - criterion = the loss calculation method
     Returns:
         - model = model after e epochs of training
         - model_hyperparameters = revised hyperparameters for model after training
     '''
+    # Print the GPU information or indicate that the GPU is not available if there is an issue
+    print('Using GPU =', torch.cuda.get_device_name(), round(torch.cuda.get_device_properties(0).total_memory*(10**-9)), 'GB'\
+                    if torch.cuda.is_available() else "WARNING GPU UNAVAILABLE")
 
-    print('Using GPU =', torch.cuda.get_device_name() if torch.cuda.is_available() else "WARNING GPU UNAVAILABLE")
-    t0 = time.time() - model_hyperparameters['training_time']*60 # initialize start time for running training
-
-
-    # running_count = 0 # initialize running count in order to track number of epochs fine tuning deeper network
-    running = False # initialize running variable to start system with deeper network frozen
+    # Initialize a reference start time and subtract previous training time from reference point
+    # Document starting learnrate and initialize a Boolean running variable to track deeper layer training
+    t0 = time.time() - model_hyperparameters['training_time']*60
     startlearn = model_hyperparameters['learnrate']
+    running = False
 
-    # Only train the replaced fully connected classifier parameters, feature parameters are frozen
-    optimizer = optim.Adam(getattr(model, list(model._modules.items())[-1][0]).parameters(),
-                    lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay'])
+    # Set the optimizer for backpropogation. All parameters are set so that when unfrozen, they are included in backprop
+    # NOTE: optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay= wd) to access unfrozen params
+    optimizer = optim.Adam(model.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay'])
 
-    if type_loader == 'overfit_loader':
-        decay = 0.9 # hyperparameter decay factor for decaying learning rate
-        epoch = 200 # hyperparameter number of epochs
-
-    if type_loader == 'train_loader':
-        decay = 0.6 # hyperparameter decay factor for decaying learning rate
-
+    # Run the requested number of epochs worth of training by iterating e through the range of epochs
     for e in range(epoch):
-        model, ave_training_loss = o2_model_backprop(model, dict_data_loaders[type_loader], optimizer, criterion)
-        epoch_count_correct, ave_validate_loss = o3_model_no_backprop(model, dict_data_loaders['valid_loader'], criterion)
+        # Call backprop function with training data and model to return an updated model and the epoch training loss
+        # Call validation function (no backprop) with the validation data and model and return performance data
+        model, ave_training_loss = o2_model_backprop(model, train_loader, optimizer, criterion)
+        val_count_correct, ave_validate_loss = o3_model_no_backprop(model, valid_loader, criterion)
 
-        model_hyperparameters['training_loss_history'].append(ave_training_loss) # append ave training loss to history of training losses
-        model_hyperparameters['validate_loss_history'].append(ave_validate_loss) # append ave validate loss to history of validate losses
+        # Update the training history log with the average training loss and validation loss for this epoch
+        model_hyperparameters['training_loss_history'].append(ave_training_loss)
+        model_hyperparameters['validate_loss_history'].append(ave_validate_loss)
 
-        print('Epoch: {}/{}.. '.format(e+1, epoch),
-            'Train Loss: {:.3f}.. '.format(ave_training_loss),
-            'Valid Loss: {:.3f}.. '.format(ave_validate_loss),
-            'Valid Accuracy: {:.3f}.. '.format(epoch_count_correct / len(dict_data_loaders['valid_loader'].dataset)),
-            'Runtime - {:.0f} mins'.format((time.time() - t0)/60))
+        # Print the epoch loss, accuracy, GPU usage, and runtime data. Accuracy is total correct over total in data
+        print('Epoch: {}/{}..'.format(e+1, epoch),
+            'Train Loss: {:.3f}..'.format(ave_training_loss),
+            'Valid Loss: {:.3f}..'.format(ave_validate_loss),
+            'Valid Accy: {:.2f}..'.format(val_count_correct / len(valid_loader.dataset)),
+            'Mem: {:.2f}GB..'.format(np.around(torch.cuda.memory_allocated()*(10**-9), decimals=2)),
+            'Time: {:.0f}min'.format((time.time() - t0)/60))
 
-        training_loss_history = model_hyperparameters['training_loss_history']
-        if len(training_loss_history) > 3: # hold loop until training_loss_history has enough elements to satisfy search requirements
-            if -3*model_hyperparameters['learnrate']*decay*decay*training_loss_history[0]\
-                            > np.mean([training_loss_history[-2]-training_loss_history[-1],
-                            training_loss_history[-3]-training_loss_history[-2]]):
-                # if the average of the last 2 training loss slopes is less than the original loss factored down by the learnrate, the decay, and a factor of 3, then decay the learnrate
+        # Reassigned model_hyperparameters['training_loss_history'] for this section to tlh for readability
+        tlh = model_hyperparameters['training_loss_history']
+        # This next section determines when to adjust learning based on training progress
+        # This section is mainly a for fun exercise to tune a math algorithm for deciding when to adjust training
+        # Hold loop until training_loss_history has enough elements to satisfy search requirements
+        if len(tlh) > 3: # NOTE: 2
+            # Compute reference: 3 times the first training loss factored by the current learnrate and the decay squared
+            # Compute progress in training: the average of the last 2 training loss slopes
+            # If progress in training is inverted sufficient enough to be greater than the reference, decay learnrate
+            if 3*model_hyperparameters['learnrate']*decay*decay*tlh[0] < np.mean([tlh[-1]-tlh[-2], tlh[-2]-tlh[-3]]):
                 model_hyperparameters['learnrate'] *= decay # multiply learnrate by the decay hyperparameter
-                optimizer = optim.Adam(getattr(model, list(model._modules.items())[-1][0]).parameters(),
-                                lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay']) # revise the optimizer to use the new learnrate
+                optimizer = optim.Adam(model.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay']) # revise the optimizer to use the new learnrate
                 print('Learnrate changed to: {:f}'.format(model_hyperparameters['learnrate']))
-            if model_hyperparameters['learnrate'] <= startlearn*decay**(9*(decay**3))\
-                            and model_hyperparameters['running_count'] == 0: # super messy, I wanted a general expression that chose when to activate the deeper network and this worked
+            # Compute reference: starting learnrate factored by decay^(9*decay^3))
+            # Once learnrate has decayed to less than this value, call control_model_grad to activate deep layer training
+            # Don't call if deep layer training has already been activated, set running to True to begin counting
+            # In practice this performed well for various models and for overfitting vs regular training
+            if model_hyperparameters['learnrate'] <= startlearn*decay**(9*(decay**3)) and model_hyperparameters['running_count'] == 0:
                 model = o4_control_model_grad(model, True)
                 model_hyperparameters['epoch_on'] = e
-                running = True # change the running parameter to True so that the future loop can start counting epochs that have run
-            if running: # if running, add to count for the number of epochs run
+                running = True
+            # If running, add to model running count to track the number of epochs run
+            if running:
                 model_hyperparameters['running_count'] +=1
-            if running and model_hyperparameters['running_count'] > epoch/5: # deactivate parameters if running, add the count has reached its limiter
+            # Once the deep layers have trained for 20 epochs, call control_model_grad to deactivate deep layer training
+            # Set the running variable to False to stop counting and prevent recalling deactivate layers
+            if running and model_hyperparameters['running_count'] > 20:
                 model = o4_control_model_grad(model, False)
                 running = False
-            if type_loader == 'overfit_loader':
-                if np.mean([training_loss_history[-1], training_loss_history[-2], training_loss_history[-3]]) < 0.0002:
+            # Find the basename of the loader's file root and check if it is overfit data
+            # If overfit data, see if the train loss has gone below a target. If so end and print success
+            # If the train loss has not gone below the target and the epochs have elapsed, print failure
+            if os.path.basename(train_loader.dataset.root) == 'overfit':
+                if np.mean([tlh[-1], tlh[-2], tlh[-3]]) < 0.0001:
                     print('\nModel successfully overfit images\n')
                     return model, model_hyperparameters
                 if e+1 == epoch:
                     print('\nModel failed to overfit images\n')
-    model_hyperparameters['training_time'] = np.around((time.time() - t0)/60, decimals=1)
 
+    # Document the training time for the model and return the trained model and hyperparameters
+    model_hyperparameters['training_time'] = np.around((time.time() - t0)/60, decimals=1)
     return model, model_hyperparameters
 
 
@@ -116,26 +128,25 @@ def o2_model_backprop(model, data_loader, optimizer, criterion):
         - model = model after cycling through the data_loader (one epoch of training)
         - ave_training_loss = averaged training loss per batch of data
     '''
-    # Check model can overfit the data when using a miniscule sample size, looking for high accuracy on a few images
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.cuda.empty_cache()
-    model.to(device)
-
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # Set device to GPU if available
+    torch.cuda.empty_cache() # refresh GPU memory before starting
+    model.to(device) # Move model to device
     epoch_train_loss = 0 # initialize total training loss for this epoch
-    model.train() # Set model to training mode to activate operations such as dropout
-    for images, labels in data_loader: # cycle through training data
+    model.train() # Set model to training mode to activate regularizations such as dropout
+
+    for images, labels in data_loader: # cycle through training data to conduct backpropogation
         images, labels = images.to(device), labels.to(device) # move data to GPU
 
         optimizer.zero_grad() # clear gradient history
-        log_out = model(images) # run image through model to get logarithmic probability
+        log_out = model(images) # run images through model to get logarithmic probability
         loss = criterion(log_out, labels) # calculate loss (error) for this image batch based on criterion
 
         loss.backward() # backpropogate gradients through model based on error
         optimizer.step() # update weights in model based on calculated gradient information
         epoch_train_loss += loss.item() # add training loss to total train loss this epoch, convert to value with .item()
-    ave_training_loss = epoch_train_loss / len(data_loader) # determine average loss per batch of training images
 
-    return model, ave_training_loss
+    ave_training_loss = epoch_train_loss / len(data_loader.dataset) # determine average loss per training image
+    return model, ave_training_loss # return the updated model and the average training loss
 
 
 def o3_model_no_backprop(model, data_loader, criterion):
@@ -148,30 +159,31 @@ def o3_model_no_backprop(model, data_loader, criterion):
         - data_loader = generator for data to conduct predictions
         - criterion = the loss calculation method
     Returns:
-        - epoch_count_correct = number of correctly predicted data items
+        - val_count_correct = number of correctly predicted data items
         - ave_validate_loss = averaged criterion loss per batch of data
     '''
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # Set device to GPU if available
+    torch.cuda.empty_cache() # refresh GPU memory before starting
+    model.to(device) # Move model to device
     epoch_valid_loss = 0 # initialize total validate loss for this epoch
-    epoch_count_correct = 0 # initialize total correct predictions on valid set
+    val_count_correct = 0 # initialize total correct predictions on valid set
     model.eval() # set model to evaluate mode to deactivate generalizing operations such as dropout and leverage full model
+
     with torch.no_grad(): # turn off gradient tracking and calculation for computational efficiency
         for images, labels in data_loader: # cycle through validate data to observe performance
             images, labels = images.to(device), labels.to(device) # move data to GPU
 
-            log_out = model(images) # obtain the logarithmic probability from the model
+            log_out = model(images) # run images through model to get logarithmic probability
             loss = criterion(log_out, labels) # calculate loss (error) for this image batch based on criterion
             epoch_valid_loss += loss.item() # add validate loss to total valid loss this epoch, convert to value with .item()
 
             out = torch.exp(log_out) # obtain probability from the logarithmic probability calculated by the model
-            highest_prob, chosen_class = out.topk(1, dim=1) # obtain the chosen classes based on greavalid calculated probability
+            highest_prob, chosen_class = out.topk(1, dim=1) # obtain the top classes and probabilities from the output
             equals = chosen_class.view(labels.shape) == labels # determine how many correct matches were made in this batch
-            epoch_count_correct += equals.sum()  # add the count of correct matches this batch to the total running this epoch
+            val_count_correct += equals.sum()  # add the count of correct matches this batch to the total number this epoch
 
-        ave_validate_loss = epoch_valid_loss / len(data_loader) # determine average loss per batch of validate images
-
-    return epoch_count_correct, ave_validate_loss
+        ave_validate_loss = epoch_valid_loss / len(data_loader.dataset) # determine average loss per validate image
+    return val_count_correct, ave_validate_loss # return this epoch's total correct predictions and average training loss
 
 
 def o4_control_model_grad(model, control=False):
@@ -185,19 +197,26 @@ def o4_control_model_grad(model, control=False):
     Returns:
         - model = edited model with controlled layers
     '''
-    network_depth = len(list(model.children()))
-    param_freeze_depth = network_depth // 2
-    controlled_layers = []
-    layer_depth = 0
-    #Doesn't get deeper nested layers
-    for layer in model.children():
-        layer_depth += 1
-        if (network_depth - param_freeze_depth) < layer_depth < network_depth:
-            controlled_layers.append(layer._get_name())
-            for param in layer.parameters():
-                param.requires_grad = control
-    print(f'\n Toggle requires_grad = {control}: ', controlled_layers, '\n')
-    return model
+    # NOTE: Don't use model.children for network_depth, as this does not capture sublayers!
+    network_depth = len(list(model.modules())) # Obtain the length of the layers used in the network
+    param_freeze_depth = network_depth // 3 # Define what fraction of the network will be frozen and unfrozen
+    controlled_layers = [] # Initialize the controlled layers list that will track what is frozen and unfrozen
+    layer_depth = 0 # Initialize the start for iterating through layers
+
+    for layer in list(model.modules()): # Iterate through layers in the model
+        layer_depth += 1 # Increase current layer depth by 1 to progress through network layers
+
+        if (network_depth - param_freeze_depth) <= layer_depth: # Once sufficiently deep, control layers
+            controlled_layers.append(layer._get_name()) # Add current layer's name to list of controlled layers
+            for param in layer.parameters(): # Iterate through the parameters in this layer
+                param.requires_grad = control # Freeze or unfreeze the gradient on the parameter
+
+        if layer._get_name() == 'Linear': # The fully connected layers are always unfrozen
+            for param in layer.parameters(): # Iterate parameters
+                param.requires_grad = True # Set gradient to true
+
+    print(f'\n Toggle requires_grad = {control}: ', controlled_layers, '\n') # Print changes made to active grads
+    return model # Return model with changed param activity
 
 
 def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme, train_type='loaded'):
@@ -214,9 +233,12 @@ def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme
     Returns:
         - none
     '''
+    # Plot training history information
     plt.clf()
     plt.plot(model_hyperparameters['training_loss_history'], label='Training Training Loss')
     plt.plot(model_hyperparameters['validate_loss_history'], label='Validate Training Loss')
+
+    # If deep layer training has started, plot dotted lines for start and finish
     if model_hyperparameters['epoch_on']:
         plt.vlines(
             colors = 'black',
@@ -234,17 +256,25 @@ def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme
             linestyles = 'dotted',
             label = 'Deep Layers Deactivated'
         ).set_clip_on(False)
+
+    # Plot title and labels
     plt.title(model_name)
     plt.ylabel('Total Loss')
     plt.xlabel('Total Epoch ({})'.format(len(model_hyperparameters['training_loss_history'])))
     plt.legend(frameon=False)
+
+    # If the plot was not loaded, save the plot using the naming convention
     if train_type != 'loaded':
-        plt.savefig(file_name_scheme + '_training_history_' + train_type)
+        plt.savefig(file_name_scheme + '_training_history_' + train_type + '.png')
+        print('Saved', train_type, 'training history to project directory')
+
+    # Show plot and unblock to allow function continuation, pause to load image and avoid from freezing
+    plt.show(block=False)
+    plt.pause(2)
     plt.clf()
-    print('Saved', train_type, 'training history to project directory')
+    plt.close()
 
-
-def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, topk=5):
+def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, topk=3):
     '''
     Purpose:
         - Compute probabilities for various classes for an image using a model
@@ -257,22 +287,29 @@ def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, top
     Returns:
         - dict_prediction_results = dictionary containing predictions and probabilities for data keys
     '''
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-    model.eval()
-    dict_prediction_results = {}
-    with torch.no_grad(): # turn off gradient tracking and calculation for computational efficiency
-        for image, filenames in data_loader:
-            image = image.to(device)
-            model_output = torch.exp(model(image))
-            probabilities, class_indexes = model_output.topk(5, dim=1)
-            # print(np.arange(len(filenames)))
-            for index in np.arange(len(filenames)):
-                # print(index)
-                class_prediction = [dict_data_labels[dict_class_labels[value]] for value in class_indexes.tolist()[index]]
-                dict_prediction_results[filenames[index]] = [class_prediction, probabilities.tolist()[index]]
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # set device to GPU if available
+    torch.cuda.empty_cache() # refresh GPU memory before starting
+    model.to(device) # move model to device
+    dict_prediction_results = {} # initialize the prediction results dictionary
+    model.eval() # set model to evaluate mode to deactivate generalizing operations such as dropout and leverage full model
 
-    return dict_prediction_results
+    with torch.no_grad(): # turn off gradient tracking and calculation for computational efficiency
+        for image, filenames in data_loader: # cycle through data for inference
+            image = image.to(device) # move data to GPU
+
+            log_out = model(image) # run images through model to get logarithmic probability
+            model_output = torch.exp(log_out) # obtain probability from the logarithmic probability
+            probabilities, class_indexes = model_output.topk(topk, dim=1) # obtain the top results
+
+            for index in np.arange(len(filenames)):# iterate through filenames batch with index
+                # Find the class prediction name by comparing the class label dictionary to the data label dictionary
+                if dict_data_labels:
+                    class_prediction = [dict_data_labels[dict_class_labels[value]] for value in class_indexes.tolist()[index]]
+                else:
+                    class_prediction = [dict_class_labels[value] for value in class_indexes.tolist()[index]]
+                # Then add this filename to the prediction results dictionary with the corresponding results and
+                dict_prediction_results[filenames[index]] = [class_prediction, probabilities.tolist()[index]]
+    return dict_prediction_results # Return
 
 
 def o7_show_prediction(data_dir, dict_prediction_results):
@@ -286,15 +323,19 @@ def o7_show_prediction(data_dir, dict_prediction_results):
     Returns:
         - none
     '''
+    # Randomly select an example file to conduct a prediction
     example_prediction = random.choice(list(dict_prediction_results.keys()))
 
+    # Open and show the prediction
     plt.imshow(Image.open(data_dir + 'predict/' + example_prediction)); # no need to process and inverse transform, our data is coming from the same path, I'll just open the original
     plt.show(block=False)
     plt.pause(2)
     plt.close()
+
+    # Plot the predicted class, the probabilities, and use the data's filename for the title
     plt.bar(dict_prediction_results[example_prediction][0], dict_prediction_results[example_prediction][1])
     plt.title(example_prediction)
     plt.xticks(rotation=20);
     plt.show(block=False)
-    plt.pause(5)
+    plt.pause(3)
     plt.close()
