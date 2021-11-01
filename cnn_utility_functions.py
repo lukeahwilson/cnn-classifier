@@ -174,7 +174,7 @@ def u5_time_limited_input(prompt, default=True):
     user_input_thread.start() # Start the thread, calling the user input function
     user_input_thread.join(TIMEOUT) # Limit the thread to the TIMEOUT time limit
     if not answered:
-        print('\n No valid input, proceeding with operation...')
+        print('\n No valid input, proceeding with operation...\n')
     return choice
 
 

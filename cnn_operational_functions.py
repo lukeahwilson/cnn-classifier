@@ -274,7 +274,7 @@ def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme
     plt.clf()
     plt.close()
 
-def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, topk=3):
+def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, topk=5):
     '''
     Purpose:
         - Compute probabilities for various classes for an image using a model
@@ -292,6 +292,8 @@ def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, top
     model.to(device) # move model to device
     dict_prediction_results = {} # initialize the prediction results dictionary
     model.eval() # set model to evaluate mode to deactivate generalizing operations such as dropout and leverage full model
+    if len(dict_class_labels) < topk: # confirm there are enough different classes to satisfy results ranking
+        topk = len(dict_class_labels) # replace number of ranked results to the number of classes if not
 
     with torch.no_grad(): # turn off gradient tracking and calculation for computational efficiency
         for image, filenames in data_loader: # cycle through data for inference

@@ -147,6 +147,6 @@ def m3_load_model_checkpoint(model, file_name_scheme):
     # Load the model hyperparameters by using the naming convention and display the learnrate and train time
     with open(file_name_scheme + '_hyperparameters.json', 'r') as file:
         model_hyperparameters = json.load(file)
-    print('loaded model learnrate = {:.2e}..'.format( model_hyperparameters['learnrate']),
-          'loaded model training time = {:.0f} min'.format( model_hyperparameters['training_time']))
+    print('\nLoaded model learnrate = {:.2e}..'.format( model_hyperparameters['learnrate']),
+          'Loaded model training time = {:.0f} min\n'.format( model_hyperparameters['training_time']))
     return model, model_hyperparameters

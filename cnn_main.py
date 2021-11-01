@@ -131,9 +131,9 @@ def main():
             t1 = time.time()
             dict_prediction_results = o6_predict_data(model, dict_data_loaders['predict_loader'],
                             dict_data_labels, dict_class_labels)
-            o7_show_prediction(data_dir, dict_prediction_results)
             print('Runtime - {:.0f} seconds\n'.format((time.time() - t1)),
                             [dict_prediction_results[key][0][0] for key in dict_prediction_results])
+            o7_show_prediction(data_dir, dict_prediction_results)
 
 
 if __name__ == "__main__":
