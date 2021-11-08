@@ -42,6 +42,7 @@ def u1_get_input_args():
     '''
     parser = argparse.ArgumentParser(description = 'Classify input images and benchmark performance')
     parser.add_argument('--dir', type=str, default= 'Flower_data', help='input path for data directory')
+    parser.add_argument('--auto', type=str, default='y', help='yes \'y\' or no \'n\' to automatically close images', choices=['y','n'])
     parser.add_argument('--load', type=str, default='n', help='yes \'y\' or no \'n\' to load state_dict for model', choices=['y','n'])
     parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
     parser.add_argument('--epoch', type=int, default=50, help='provide the number of epochs for training (default 100)')

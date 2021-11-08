@@ -84,6 +84,7 @@ def main():
     if arg.load == 'y':
         model, model_hyperparameters = m3_load_model_checkpoint(model, file_name_scheme)
         o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme)
+        o8_plt_display(arg.auto)
 
     # If user requests train, first display an example piece of data from the processed training set
     if arg.train == 'y':
@@ -91,14 +92,13 @@ def main():
         # NOTE 2: Plotted images blocks function continuation, unblock requires pause to load image or image will freeze
         print('Displaying an example processed image from the training set..\n')
         plt.imshow(random.choice(dict_datasets['train_data'])[0].numpy().transpose((1, 2, 0))) # NOTE: 1
-        plt.show(block=False) # NOTE: 2
-        plt.pause(2)
-        plt.close()
+        o8_plt_display(arg.auto)
 
         # Call train model with model and training dataset to return trained model and hyperparameters, then plot and save
         model, model_hyperparameters = o1_train_model(model, dict_data_loaders['train_loader'],
                         dict_data_loaders['valid_loader'], arg.epoch, 0.6, model_hyperparameters, criterion)
         o5_plot_training_history(arg.model, model_hyperparameters, file_name_scheme, 'complete')
+        o8_plt_display(arg.auto)
 
         # Prompt user to save, save the model and its hyperparameters per the naming convention
         if u5_time_limited_input('Would you like to save the model?'):
@@ -111,6 +111,7 @@ def main():
             overfit_model, overfit_model_hyperparameters = o1_train_model(model, dict_data_loaders['overfit_loader'],
                             dict_data_loaders['valid_loader'], arg.epoch, 0.9, model_hyperparameters, criterion)
             o5_plot_training_history(arg.model, overfit_model_hyperparameters, file_name_scheme, 'overfit')
+            o8_plt_display(arg.auto)
 
     # If user requests load, or has requested training and training has completed, the model is ready for predictions
     if arg.train == 'y' or arg.load == 'y':
@@ -133,7 +134,7 @@ def main():
                             dict_data_labels, dict_class_labels)
             print('Runtime - {:.0f} seconds\n'.format((time.time() - t1)),
                             [dict_prediction_results[key][0][0] for key in dict_prediction_results])
-            o7_show_prediction(data_dir, dict_prediction_results)
+            o7_show_prediction(data_dir, dict_prediction_results, arg.auto)
 
 
 if __name__ == "__main__":

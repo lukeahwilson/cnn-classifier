@@ -234,7 +234,6 @@ def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme
         - none
     '''
     # Plot training history information
-    plt.clf()
     plt.plot(model_hyperparameters['training_loss_history'], label='Training Training Loss')
     plt.plot(model_hyperparameters['validate_loss_history'], label='Validate Training Loss')
 
@@ -268,11 +267,6 @@ def o5_plot_training_history(model_name, model_hyperparameters, file_name_scheme
         plt.savefig(file_name_scheme + '_training_history_' + train_type + '.png')
         print('Saved', train_type, 'training history to project directory')
 
-    # Show plot and unblock to allow function continuation, pause to load image and avoid from freezing
-    plt.show(block=False)
-    plt.pause(2)
-    plt.clf()
-    plt.close()
 
 def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, topk=5):
     '''
@@ -314,7 +308,7 @@ def o6_predict_data(model, data_loader, dict_data_labels, dict_class_labels, top
     return dict_prediction_results # Return
 
 
-def o7_show_prediction(data_dir, dict_prediction_results):
+def o7_show_prediction(data_dir, dict_prediction_results, auto_close_arg):
     '''
     Purpose:
         - Randomly choose a piece of data from the predict folder
@@ -330,14 +324,21 @@ def o7_show_prediction(data_dir, dict_prediction_results):
 
     # Open and show the prediction
     plt.imshow(Image.open(data_dir + 'predict/' + example_prediction)); # no need to process and inverse transform, our data is coming from the same path, I'll just open the original
-    plt.show(block=False)
-    plt.pause(2)
-    plt.close()
+    o8_plt_display(auto_close_arg)
 
     # Plot the predicted class, the probabilities, and use the data's filename for the title
     plt.bar(dict_prediction_results[example_prediction][0], dict_prediction_results[example_prediction][1])
     plt.title(example_prediction)
     plt.xticks(rotation=20);
-    plt.show(block=False)
-    plt.pause(3)
-    plt.close()
+    o8_plt_display(auto_close_arg)
+
+
+def o8_plt_display(auto_close_arg):
+    # Show plot and unblock to allow function continuation, pause to load image and avoid from freezing
+    if auto_close_arg == 'y':
+        plt.show(block=False)
+        plt.pause(3)
+        plt.close()
+    else:
+        plt.show()
+    plt.clf()
