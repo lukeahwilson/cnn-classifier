@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-10-27
+# REVISED DATE: 2021-11-09
 # PURPOSE: Provide model functions for import into main
 #   - Classifier(nn.Module)
 #   - m1_create_classifier(model_name, hidden_layers, classes_length)

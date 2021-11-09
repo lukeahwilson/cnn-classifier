@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-10-27
+# REVISED DATE: 2021-11-09
 # PURPOSE: Provide operational functions for import into main
 #   - o1_train_model(model, dict_data_loaders, epoch, learnrate, type_loader, criterion)
 #   - o2_model_backprop(model, data_loader, optimizer, criterion)

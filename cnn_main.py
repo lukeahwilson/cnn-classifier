@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # PROGRAMMER: Luke Wilson
 # DATE CREATED: 2021-09-27
-# REVISED DATE: 2021-01-01
+# REVISED DATE: 2021-11-09
 # PURPOSE:
 #   - API to train and apply leveraged pretrained vision models for classification
 # REQUIREMENTS:
