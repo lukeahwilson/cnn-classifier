@@ -334,6 +334,14 @@ def o7_show_prediction(data_dir, dict_prediction_results, auto_close_arg):
 
 
 def o8_plt_display(auto_close_arg):
+    '''
+    Purpose:
+        - Receive user arg to either automatically close a plot or leave it open before continuing operations
+    Parameters:
+        - auto_close_arg = user argument to automatically close and continue after plotting
+    Returns:
+        - none
+    '''
     # Show plot and unblock to allow function continuation, pause to load image and avoid from freezing
     if auto_close_arg == 'y':
         plt.show(block=False)
