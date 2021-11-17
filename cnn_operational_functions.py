@@ -71,12 +71,14 @@ def o1_train_model(model, train_loader, valid_loader, epoch, decay, model_hyperp
             'Mem: {:.2f}GB..'.format(np.around(torch.cuda.memory_allocated()*(10**-9), decimals=2)),
             'Time: {:.0f}min'.format((time.time() - t0)/60))
 
-        # Reassigned model_hyperparameters['training_loss_history'] for this section to tlh for readability
-        tlh = model_hyperparameters['training_loss_history']
         # This next section determines when to adjust learning based on training progress
         # This section is mainly a for fun exercise to tune a math algorithm for deciding when to adjust training
+        # Reassigned model_hyperparameters['training_loss_history'] for this section to tlh for readability
+        tlh = model_hyperparameters['training_loss_history']
+
         # Hold loop until training_loss_history has enough elements to satisfy search requirements
-        if len(tlh) > 3: # NOTE: 2
+        if len(tlh) > 3:
+
             # Compute reference: 3 times the first training loss factored by the current learnrate and the decay squared
             # Compute progress in training: the average of the last 2 training loss slopes
             # If progress in training is inverted sufficient enough to be greater than the reference, decay learnrate
@@ -84,6 +86,7 @@ def o1_train_model(model, train_loader, valid_loader, epoch, decay, model_hyperp
                 model_hyperparameters['learnrate'] *= decay # multiply learnrate by the decay hyperparameter
                 optimizer = optim.Adam(model.parameters(), lr=model_hyperparameters['learnrate'], weight_decay=model_hyperparameters['weightdecay']) # revise the optimizer to use the new learnrate
                 print('Learnrate changed to: {:f}'.format(model_hyperparameters['learnrate']))
+
             # Compute reference: starting learnrate factored by decay^(9*decay^3))
             # Once learnrate has decayed to less than this value, call control_model_grad to activate deep layer training
             # Don't call if deep layer training has already been activated, set running to True to begin counting
@@ -92,14 +95,17 @@ def o1_train_model(model, train_loader, valid_loader, epoch, decay, model_hyperp
                 model = o4_control_model_grad(model, True)
                 model_hyperparameters['epoch_on'] = e
                 running = True
+
             # If running, add to model running count to track the number of epochs run
             if running:
                 model_hyperparameters['running_count'] +=1
+
             # Once the deep layers have trained for 20 epochs, call control_model_grad to deactivate deep layer training
             # Set the running variable to False to stop counting and prevent recalling deactivate layers
             if running and model_hyperparameters['running_count'] > 20:
                 model = o4_control_model_grad(model, False)
                 running = False
+
             # Find the basename of the loader's file root and check if it is overfit data
             # If overfit data, see if the train loss has gone below a target. If so end and print success
             # If the train loss has not gone below the target and the epochs have elapsed, print failure

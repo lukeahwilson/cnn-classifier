@@ -65,7 +65,7 @@ def main():
     #Create file pathway and naming convention saving and loading files in program
     file_name_scheme =  data_dir + 'models/' + os.path.basename(os.path.dirname(data_dir))\
                     + '_' + arg.model + '_' + str(arg.layer) + 'lay'
-    print(file_name_scheme)
+    
     # Call create classifier to return a model leveraging a desired pretrained architecture, define loss criterion
     model = m1_create_classifier(arg.model, arg.layer, len(dict_datasets['train_data'].classes))
     criterion = nn.NLLLoss()
