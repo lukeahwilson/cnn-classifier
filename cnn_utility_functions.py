@@ -14,7 +14,7 @@
 # Import libraries
 import json
 import argparse
-import os, random
+import time, os, random
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -41,10 +41,11 @@ def u1_get_input_args():
         - Stored command line arguments as an Argument Parser Object with parse_args() data structure
     '''
     parser = argparse.ArgumentParser(description = 'Classify input images and benchmark performance')
-    parser.add_argument('--dir', type=str, default= 'Flower_data', help='input path for data directory')
-    parser.add_argument('--auto', type=str, default='y', help='yes \'y\' or no \'n\' to automatically close images', choices=['y','n'])
-    parser.add_argument('--load', type=str, default='n', help='yes \'y\' or no \'n\' to load state_dict for model', choices=['y','n'])
-    parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model', choices=['y','n'])
+    parser.add_argument('--dir', type=str, default= 'Flower_data', help='input path for data directory (default Flower_data)')
+    parser.add_argument('--auto', type=str, default='y', help='yes \'y\' or no \'n\' to automatically close images (default y)', choices=['y','n'])
+    parser.add_argument('--load', type=str, default='n', help='yes \'y\' or no \'n\' to load state_dict for model (default n)', choices=['y','n'])
+    parser.add_argument('--build', type=str, default= 'n', help='yes \'y\' or no \'n\' to build folders at data directory (default n)', choices=['y','n'])
+    parser.add_argument('--train', type=str, default='n', help='yes \'y\' or no \'n\' to retrain this model (default n)', choices=['y','n'])
     parser.add_argument('--epoch', type=int, default=50, help='provide the number of epochs for training (default 100)')
     parser.add_argument('--layer', type=int, default=2, help='provide the number of hidden layers to use (default 2)')
     parser.add_argument('--learn', type=int, default=0.003, help='provide the learning rate to begin training (default 0.003)')
@@ -207,3 +208,36 @@ def u6_user_input_prompt(prompt, default):
         else:
             choice=choice
             print('Error, please use the character inputs \'Y\' and \'N\'')
+
+def u7_build_data_dir(data_dir):
+    '''
+    Purpose:
+        - Iterate through a folder full of separated images and parse into dedicated folders
+    Parameters:
+        - data_dir = pathway to the data
+    Action:
+        - Creates the following folders: models, overfit, predict, test, train, valid
+        - Proportionally sorts images into created folders
+    '''
+    print('Building Data Directory Folders...')
+    class_folders = os.listdir(data_dir)
+    for new_folder in ['models', 'predict', 'overfit', 'test', 'train', 'valid']:
+        os.mkdir(os.path.join(data_dir, new_folder))
+
+    for class_folder in class_folders:
+        class_dir = os.path.join(data_dir, class_folder)
+        number_images_total = len(os.listdir(class_dir))
+        dict_folder_distribution = {'overfit':0.01, 'predict':0.04, 'test':0.05, 'valid':0.2}
+
+        for new_folder in dict_folder_distribution.keys():
+            dict_folder_distribution[new_folder] = round(number_images_total*dict_folder_distribution[new_folder])
+            if new_folder != 'predict': os.mkdir(os.path.join(data_dir, new_folder, class_folder))
+
+        for new_folder in dict_folder_distribution.keys():
+            for file in random.sample(os.listdir(class_dir), dict_folder_distribution[new_folder]):
+                if new_folder == 'predict': new_path = os.path.join(data_dir, new_folder, class_folder + file)
+                else: new_path = os.path.join(data_dir, new_folder, class_folder, file)
+                os.rename(os.path.join(class_dir, file), new_path)
+        os.rename(class_dir, os.path.join(data_dir, 'train', class_folder))
+    time.sleep(1)
+    print('Data Directory Ready!\n')

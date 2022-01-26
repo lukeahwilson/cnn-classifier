@@ -16,6 +16,7 @@
 # HOW TO USE:
 #   - If no model has been trained and saved, start by training a model
 #   - Store data in folders at this location: os.path.expanduser('~') + '/Programming Data/'
+#   - Use the arg.parse command --build to automatically generate data folders in the data_dir
 #   - For training, 'train' and 'valid' folders with data are required in the data_dir
 #   - For overfit testing, an 'overfit' folder with data is required in the data_dir
 #   - For performance testing, a 'test' folder with data is required in the data_dir
@@ -55,6 +56,10 @@ def main():
     # Call ArgumentParser for user arguments and store in arg
     arg = u1_get_input_args()
     data_dir = os.path.expanduser('~') + '/Programming Data/' + arg.dir + '/'
+    print(data_dir)
+
+    # Check whether to call directory builder function to convert class folders into training data folders
+    if arg.build == 'y': u7_build_data_dir(data_dir)
 
     # Call data processor to return a dictionary of datasets, the data labels, and the class labels
     dict_datasets, dict_data_labels, dict_class_labels = u2_load_processed_data(data_dir)
@@ -65,7 +70,7 @@ def main():
     #Create file pathway and naming convention saving and loading files in program
     file_name_scheme =  data_dir + 'models/' + os.path.basename(os.path.dirname(data_dir))\
                     + '_' + arg.model + '_' + str(arg.layer) + 'lay'
-    
+
     # Call create classifier to return a model leveraging a desired pretrained architecture, define loss criterion
     model = m1_create_classifier(arg.model, arg.layer, len(dict_datasets['train_data'].classes))
     criterion = nn.NLLLoss()
