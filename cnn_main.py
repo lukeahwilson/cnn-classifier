@@ -22,6 +22,7 @@
 #   - For performance testing, a 'test' folder with data is required in the data_dir
 #   - For inference, put data of interest in a 'predict' folder in the data_dir
 #   - For saving and loading models, create a 'models' folder in the data_dir
+#   - Using --build, images with wrong shape are sorted to an 'error' folder
 ##
 
 # Import libraries

@@ -213,30 +213,54 @@ def u7_build_data_dir(data_dir):
     '''
     Purpose:
         - Iterate through a folder full of separated images and parse into dedicated folders
+    Required Input:
+        - In order to build out data folders using this function, the parent folder must be organized
+        as a folder containing a number of separate class folders each containing class distinct images
     Parameters:
         - data_dir = pathway to the data
     Action:
-        - Creates the following folders: models, overfit, predict, test, train, valid
-        - Proportionally sorts images into created folders
+        - Creates the following folders: error, models, overfit, predict, test, train, valid
+        - Filters images with incorrect shapes into error folder
+        - Proportionally sorts images into other folders
     '''
+    # Obtain the list of separate classes of data from the folders
     print('Building Data Directory Folders...')
     class_folders = os.listdir(data_dir)
-    for new_folder in ['models', 'predict', 'overfit', 'test', 'train', 'valid']:
+
+    # Create the new folders that will contain the redistributed data
+    for new_folder in ['models', 'predict', 'overfit', 'test', 'train', 'valid', 'error']:
         os.mkdir(os.path.join(data_dir, new_folder))
 
+    # Iterate through each original class folder and fractionally move images to the new folders
     for class_folder in class_folders:
         class_dir = os.path.join(data_dir, class_folder)
         number_images_total = len(os.listdir(class_dir))
         dict_folder_distribution = {'overfit':0.01, 'predict':0.04, 'test':0.05, 'valid':0.2}
 
+        # Create a dictionary mapping each new folder to the number of images it will be assigned
+        # Add the class folder to each new folder, where the reassigned images will be moved to
         for new_folder in dict_folder_distribution.keys():
             dict_folder_distribution[new_folder] = round(number_images_total*dict_folder_distribution[new_folder])
             if new_folder != 'predict': os.mkdir(os.path.join(data_dir, new_folder, class_folder))
 
+        # Iterate through new folders and randomly reassign data from old class folders to new ones
         for new_folder in dict_folder_distribution.keys():
             for file in random.sample(os.listdir(class_dir), dict_folder_distribution[new_folder]):
-                if new_folder == 'predict': new_path = os.path.join(data_dir, new_folder, class_folder + file)
-                else: new_path = os.path.join(data_dir, new_folder, class_folder, file)
+
+                # Confirm that the data is the correct shape (x, y, 3) else move to error folder
+                if (len(np.shape(Image.open(os.path.join(class_dir, file)))) != 3 or
+                        np.shape(Image.open(os.path.join(class_dir, file)))[2] != 3):
+                    new_path = os.path.join(data_dir, 'error', file)
+
+                # For predict folder, move data directly into folder without classifications
+                elif new_folder == 'predict':
+                    new_path = os.path.join(data_dir, new_folder, class_folder + file)
+
+                # Else distribute data into class distinct folders within new folder
+                else:
+                    new_path = os.path.join(data_dir, new_folder, class_folder, file)
+
+                # Rename the file to the newly defined paths, once complete assign the rest to train
                 os.rename(os.path.join(class_dir, file), new_path)
         os.rename(class_dir, os.path.join(data_dir, 'train', class_folder))
     time.sleep(1)
